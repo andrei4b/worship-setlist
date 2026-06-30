@@ -5,9 +5,6 @@ const { el, clear, escapeHtml, toast, debounce } = UI;
 
 const SORT_OPTIONS = [
   { id: 'title-asc', label: 'Title A–Z' },
-  { id: 'title-desc', label: 'Title Z–A' },
-  { id: 'key', label: 'Key' },
-  { id: 'tempo', label: 'Tempo' },
   { id: 'recent', label: 'Recently added' }
 ];
 
@@ -38,9 +35,6 @@ function createSongsTab(container, ctx) {
     list = [...list];
     switch (sortId) {
       case 'title-asc': list.sort((a, b) => a.title.localeCompare(b.title)); break;
-      case 'title-desc': list.sort((a, b) => b.title.localeCompare(a.title)); break;
-      case 'key': list.sort((a, b) => (a.key || '').localeCompare(b.key || '')); break;
-      case 'tempo': list.sort((a, b) => (parseFloat(a.tempo) || 0) - (parseFloat(b.tempo) || 0)); break;
       case 'recent': list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); break;
     }
     return list;
@@ -120,6 +114,14 @@ function createSongsTab(container, ctx) {
     const chips = [];
     if (song.key) chips.push(el('span', { class: 'mini-chip mini-chip--key' }, song.key));
     if (song.tempo) chips.push(el('span', { class: 'mini-chip mini-chip--tempo' }, song.tempo + (isFinite(parseFloat(song.tempo)) ? ' bpm' : '')));
+    if (song.link) chips.push(el('a', {
+      class: 'mini-chip mini-chip--link',
+      href: song.link,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      title: 'Open link',
+      onclick: (e) => e.stopPropagation()
+    }, '🔗'));
 
     const metaBits = [];
     if (song.structure) metaBits.push(el('span', null, song.structure));
@@ -178,7 +180,10 @@ function createSongsTab(container, ctx) {
         formField('Key', keyInput),
         formField('Tempo (BPM)', tempoInput)
       ),
-      formField('Link', linkInput, 'Chord chart, video, or audio reference'),
+      formFieldWithAction('Link', linkInput, 'Chord chart, video, or audio reference', () => {
+        const url = linkInput.value.trim();
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      }),
       formField('Structure', structureInput, 'Free text — verse/chorus order, notes, etc.'),
       formField('Tags / category', tagsInput, 'Comma-separated, e.g. Christmas, Upbeat'),
       formField('Pace', paceSelect, 'Slow, Medium, or Fast')
@@ -278,6 +283,22 @@ function createSongsTab(container, ctx) {
     return el('div', { class: 'field' },
       el('label', null, label),
       inputEl,
+      hint ? el('div', { class: 'field-hint' }, hint) : null
+    );
+  }
+
+  function formFieldWithAction(label, inputEl, hint, onOpen) {
+    return el('div', { class: 'field' },
+      el('label', null, label),
+      el('div', { class: 'field-with-action' },
+        inputEl,
+        el('button', {
+          type: 'button',
+          class: 'field-action-btn',
+          title: 'Open link',
+          onclick: onOpen
+        }, '↗')
+      ),
       hint ? el('div', { class: 'field-hint' }, hint) : null
     );
   }

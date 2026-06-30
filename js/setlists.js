@@ -3,9 +3,7 @@
 
 const SETLIST_SORT_OPTIONS = [
   { id: 'recent', label: 'Most recent' },
-  { id: 'name-asc', label: 'Name A–Z' },
-  { id: 'name-desc', label: 'Name Z–A' },
-  { id: 'count', label: 'Song count' }
+  { id: 'name-asc', label: 'Name A–Z' }
 ];
 
 function createSetlistsTab(container, ctx) {
@@ -39,8 +37,6 @@ function createSetlistsTab(container, ctx) {
     switch (sortId) {
       case 'recent': list.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)); break;
       case 'name-asc': list.sort((a, b) => a.name.localeCompare(b.name)); break;
-      case 'name-desc': list.sort((a, b) => b.name.localeCompare(a.name)); break;
-      case 'count': list.sort((a, b) => (b.items || []).length - (a.items || []).length); break;
     }
     return list;
   }
@@ -164,7 +160,18 @@ function createSetlistsTab(container, ctx) {
         const effectiveKey = item.keyOverride || (song ? song.key : '');
         const effectiveTempo = song ? song.tempo : '';
 
-        titleEl = el('div', { class: 'setlist-item-title' }, title);
+        if (song && song.link) {
+          titleEl = el('a', {
+            class: 'setlist-item-title setlist-item-title--link',
+            href: song.link,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            onclick: (e) => e.stopPropagation()
+          }, title, el('span', { class: 'link-glyph' }, ' 🔗'));
+        } else {
+          titleEl = el('div', { class: 'setlist-item-title' }, title);
+        }
+
         const metaBits = [];
         if (effectiveKey) metaBits.push(el('span', null, 'Key ' + effectiveKey));
         if (effectiveTempo) metaBits.push(el('span', null, effectiveTempo + ' bpm'));

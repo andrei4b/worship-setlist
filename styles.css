@@ -198,8 +198,18 @@ a { color: var(--accent); }
   white-space: nowrap;
   letter-spacing: 0.01em;
 }
-.mini-chip--key { background: var(--accent-soft); color: var(--accent-press); }
-.mini-chip--tempo { background: var(--sage-soft); color: #4D5A41; }
+.mini-chip--key { background: var(--paper); border: 1px solid var(--line); color: var(--ink-soft); }
+.mini-chip--tempo { background: var(--paper); border: 1px solid var(--line); color: var(--ink-soft); }
+.mini-chip--link {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 2px 9px;
+  line-height: 1.5;
+}
+.mini-chip--link:active { background: var(--line); }
 
 .song-card-meta {
   font-size: 13px;
@@ -379,6 +389,19 @@ a { color: var(--accent); }
 .field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }
 .field-hint { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+.field-with-action { display: flex; gap: 8px; align-items: stretch; }
+.field-with-action input { flex: 1; }
+.field-action-btn {
+  flex-shrink: 0;
+  width: 44px;
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  border-radius: var(--radius-s);
+  font-size: 18px;
+  cursor: pointer;
+}
+.field-action-btn:active { background: var(--line); }
 
 /* ============ Buttons ============ */
 .btn {
@@ -458,6 +481,13 @@ a { color: var(--accent); }
 .setlist-item-body { flex: 1; min-width: 0; }
 .setlist-item-title { font-weight: 600; font-size: 15px; margin: 0 0 2px; }
 .setlist-item-title.is-text { font-style: italic; color: var(--ink-soft); font-weight: 500; }
+.setlist-item-title--link {
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-block;
+}
+.setlist-item-title--link:active { color: var(--accent); }
+.link-glyph { font-size: 12px; }
 .setlist-item-meta { font-size: 12.5px; color: var(--ink-soft); display: flex; gap: 8px; flex-wrap: wrap; }
 .setlist-item-actions { display: flex; gap: 2px; align-items: center; flex-shrink: 0; }
 .icon-btn {
