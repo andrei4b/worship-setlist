@@ -208,6 +208,25 @@ a { color: var(--accent); }
   flex-wrap: wrap;
   gap: 6px 10px;
 }
+.song-card-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pace-badge {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.pace-badge--slow { background: #DCEEDB; color: #2F6B33; }
+.pace-badge--medium { background: #FBEAC4; color: #8A6A0E; }
+.pace-badge--fast { background: #F6D9D6; color: #A23A2E; }
 .tag-pill {
   font-size: 11.5px;
   background: var(--paper);

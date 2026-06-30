@@ -51,7 +51,7 @@ function debounce(fn, wait) {
 }
 
 // ---- CSV ----
-const SONG_FIELDS = ['title', 'key', 'tempo', 'link', 'structure', 'tags'];
+const SONG_FIELDS = ['title', 'key', 'tempo', 'link', 'structure', 'tags', 'pace'];
 
 function csvEscape(value) {
   const s = String(value ?? '');
@@ -107,9 +107,18 @@ function csvToSongs(text) {
       link: obj.link || '',
       structure: obj.structure || '',
       tags: obj.tags ? obj.tags.split('|').map(t => t.trim()).filter(Boolean) : [],
+      pace: normalizePace(obj.pace),
       createdAt: Date.now()
     };
   });
+}
+
+function normalizePace(value) {
+  const v = String(value || '').trim().toLowerCase();
+  if (v === 'slow') return 'Slow';
+  if (v === 'medium') return 'Medium';
+  if (v === 'fast') return 'Fast';
+  return '';
 }
 
 function songsToJSON(songs) {
@@ -127,6 +136,7 @@ function jsonToSongs(text) {
     link: s.link || '',
     structure: s.structure || '',
     tags: Array.isArray(s.tags) ? s.tags : (typeof s.tags === 'string' ? s.tags.split('|').map(t => t.trim()).filter(Boolean) : []),
+    pace: normalizePace(s.pace),
     createdAt: s.createdAt || Date.now()
   }));
 }

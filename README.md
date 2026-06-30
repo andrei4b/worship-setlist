@@ -44,18 +44,20 @@ this app's origin. That means:
 
 **Songs tab**
 - Add, edit, delete songs with title, key, tempo, link, structure (free
-  text), and tags/category
-- Search by title, key, or tag
+  text), tags/category, and a pace (Slow, Medium, or Fast — shown as a
+  colored badge: green/yellow/red)
+- Search by title, key, pace, or tag
 - Sort by title (A–Z / Z–A), key, tempo, or recently added
 - Import songs from CSV or JSON
 - Export all songs to JSON (for backup)
 
 CSV format expected on import:
 ```
-title,key,tempo,link,structure,tags
-Amazing Grace,G,72,https://example.com,"Intro, V1, C, V2, C",Hymn|Classic
+title,key,tempo,link,structure,tags,pace
+Amazing Grace,G,72,https://example.com,"Intro, V1, C, V2, C",Hymn|Classic,Slow
 ```
-Tags are pipe-separated (`|`) within the CSV column.
+Tags are pipe-separated (`|`) within the CSV column. Pace must be one of
+`Slow`, `Medium`, or `Fast` (case-insensitive); anything else is ignored.
 
 **Setlists tab**
 - Create, edit, delete setlists

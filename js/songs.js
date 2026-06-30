@@ -31,6 +31,7 @@ function createSongsTab(container, ctx) {
       list = list.filter(s =>
         s.title.toLowerCase().includes(q) ||
         (s.key || '').toLowerCase().includes(q) ||
+        (s.pace || '').toLowerCase().includes(q) ||
         (s.tags || []).some(t => t.toLowerCase().includes(q))
       );
     }
@@ -124,6 +125,12 @@ function createSongsTab(container, ctx) {
     if (song.structure) metaBits.push(el('span', null, song.structure));
     (song.tags || []).forEach(t => metaBits.push(el('span', { class: 'tag-pill' }, t)));
 
+    const paceClass = song.pace ? ' pace-badge--' + song.pace.toLowerCase() : '';
+    const bottomRow = el('div', { class: 'song-card-bottom' },
+      el('div', { class: 'song-card-meta' }, ...metaBits),
+      song.pace ? el('span', { class: 'pace-badge' + paceClass }, song.pace) : null
+    );
+
     return el('div', {
       class: 'song-card',
       onclick: () => openSongForm(song)
@@ -132,7 +139,7 @@ function createSongsTab(container, ctx) {
         el('h3', { class: 'song-card-title' }, song.title),
         el('div', { class: 'song-card-chips' }, ...chips)
       ),
-      metaBits.length ? el('div', { class: 'song-card-meta' }, ...metaBits) : null
+      (metaBits.length || song.pace) ? bottomRow : null
     );
   }
 
@@ -148,7 +155,7 @@ function createSongsTab(container, ctx) {
   function openSongForm(song) {
     const isEdit = !!song;
     const draft = song ? { ...song, tags: [...(song.tags || [])] } : {
-      title: '', key: '', tempo: '', link: '', structure: '', tags: []
+      title: '', key: '', tempo: '', link: '', structure: '', tags: [], pace: ''
     };
 
     const titleInput = el('input', { type: 'text', value: draft.title, placeholder: 'e.g. Amazing Grace' });
@@ -156,7 +163,14 @@ function createSongsTab(container, ctx) {
     const tempoInput = el('input', { type: 'text', value: draft.tempo, placeholder: 'e.g. 72' });
     const linkInput = el('input', { type: 'url', value: draft.link, placeholder: 'https://…' });
     const structureInput = el('textarea', { placeholder: 'e.g. Intro, V1, C, V2, C, Bridge, C, Outro' }, draft.structure);
-    const tagsInput = el('input', { type: 'text', value: draft.tags.join(', '), placeholder: 'e.g. Christmas, Fast, Upbeat' });
+    const tagsInput = el('input', { type: 'text', value: draft.tags.join(', '), placeholder: 'e.g. Christmas, Upbeat' });
+    const paceSelect = el('select', null,
+      el('option', { value: '' }, 'None'),
+      el('option', { value: 'Slow', selected: draft.pace === 'Slow' }, 'Slow'),
+      el('option', { value: 'Medium', selected: draft.pace === 'Medium' }, 'Medium'),
+      el('option', { value: 'Fast', selected: draft.pace === 'Fast' }, 'Fast')
+    );
+    paceSelect.value = draft.pace || '';
 
     const body = el('div', null,
       formField('Title', titleInput),
@@ -166,7 +180,8 @@ function createSongsTab(container, ctx) {
       ),
       formField('Link', linkInput, 'Chord chart, video, or audio reference'),
       formField('Structure', structureInput, 'Free text — verse/chorus order, notes, etc.'),
-      formField('Tags / category', tagsInput, 'Comma-separated, e.g. Christmas, Fast')
+      formField('Tags / category', tagsInput, 'Comma-separated, e.g. Christmas, Upbeat'),
+      formField('Pace', paceSelect, 'Slow, Medium, or Fast')
     );
 
     const footer = el('div', { class: 'sheet-footer' },
@@ -194,6 +209,7 @@ function createSongsTab(container, ctx) {
             link: linkInput.value.trim(),
             structure: structureInput.value.trim(),
             tags: tagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
+            pace: paceSelect.value,
             createdAt: draft.createdAt || Date.now()
           };
           await DB.saveSong(toSave);
@@ -220,7 +236,7 @@ function createSongsTab(container, ctx) {
     );
 
     const status = el('div', { class: 'field-hint', style: 'margin-top:10px' },
-      'CSV columns: title, key, tempo, link, structure, tags (use | to separate multiple tags).'
+      'CSV columns: title, key, tempo, link, structure, tags, pace (tags use | to separate multiple values; pace must be Slow, Medium, or Fast).'
     );
 
     const body = el('div', null, drop, status);
