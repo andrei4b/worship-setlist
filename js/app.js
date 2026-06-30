@@ -3,11 +3,16 @@
 
 const { el: $el, clear: $clear } = UI;
 
-// ---- Shared sheet/modal manager ----
-let _sheetBackdrop = null;
+// ---- Shared sheet/modal manager (supports stacking) ----
+const _sheetStack = [];
 
 function openSheet(title, bodyEl, footerEl) {
-  closeSheet(true);
+  // Dim/hide the previous sheet (if any) instead of destroying it, so it
+  // survives underneath and we can return to it when this one closes.
+  if (_sheetStack.length) {
+    const prev = _sheetStack[_sheetStack.length - 1];
+    prev.style.visibility = 'hidden';
+  }
 
   const backdrop = $el('div', { class: 'sheet-backdrop' });
   const sheet = $el('div', { class: 'sheet' },
@@ -26,18 +31,32 @@ function openSheet(title, bodyEl, footerEl) {
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(() => backdrop.classList.add('is-open'));
 
-  _sheetBackdrop = backdrop;
+  _sheetStack.push(backdrop);
   return backdrop;
 }
 
-function closeSheet(immediate) {
-  if (!_sheetBackdrop) return;
-  const b = _sheetBackdrop;
-  _sheetBackdrop = null;
-  document.body.style.overflow = '';
-  if (immediate) { b.remove(); return; }
-  b.classList.remove('is-open');
-  setTimeout(() => b.remove(), 220);
+function closeSheet(closeAll) {
+  if (!_sheetStack.length) return;
+
+  if (closeAll === true) {
+    while (_sheetStack.length) {
+      const b = _sheetStack.pop();
+      b.remove();
+    }
+    document.body.style.overflow = '';
+    return;
+  }
+
+  const top = _sheetStack.pop();
+  top.classList.remove('is-open');
+  setTimeout(() => top.remove(), 220);
+
+  if (_sheetStack.length) {
+    // Reveal the sheet underneath again.
+    _sheetStack[_sheetStack.length - 1].style.visibility = 'visible';
+  } else {
+    document.body.style.overflow = '';
+  }
 }
 
 // Action menu (e.g. for setlist item options) — small bottom sheet of buttons
