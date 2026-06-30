@@ -197,19 +197,21 @@ a { color: var(--accent); }
   border-radius: 999px;
   white-space: nowrap;
   letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.4;
 }
-.mini-chip--key { background: var(--paper); border: 1px solid var(--line); color: var(--ink-soft); }
-.mini-chip--tempo { background: var(--paper); border: 1px solid var(--line); color: var(--ink-soft); }
+.mini-chip--key { background: var(--paper); color: var(--ink-soft); }
+.mini-chip--tempo { background: var(--paper); color: var(--ink-soft); }
 .mini-chip--link {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  color: var(--ink-soft);
+  background: none;
+  color: var(--ink);
   text-decoration: none;
-  font-size: 13px;
-  padding: 2px 9px;
-  line-height: 1.5;
+  font-size: 14px;
+  padding: 2px 4px;
 }
-.mini-chip--link:active { background: var(--line); }
+.mini-chip--link:active { opacity: 0.6; }
 
 .song-card-meta {
   font-size: 13px;
