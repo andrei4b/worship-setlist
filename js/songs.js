@@ -114,14 +114,6 @@ function createSongsTab(container, ctx) {
     const chips = [];
     if (song.key) chips.push(el('span', { class: 'mini-chip mini-chip--key' }, song.key));
     if (song.tempo) chips.push(el('span', { class: 'mini-chip mini-chip--tempo' }, song.tempo + (isFinite(parseFloat(song.tempo)) ? ' bpm' : '')));
-    if (song.link) chips.push(el('a', {
-      class: 'mini-chip mini-chip--link',
-      href: song.link,
-      target: '_blank',
-      rel: 'noopener noreferrer',
-      title: 'Open link',
-      onclick: (e) => e.stopPropagation()
-    }, '🔗'));
 
     const metaBits = [];
     if (song.structure) metaBits.push(el('span', null, song.structure));
@@ -138,7 +130,17 @@ function createSongsTab(container, ctx) {
       onclick: () => openSongForm(song)
     },
       el('div', { class: 'song-card-top' },
-        el('h3', { class: 'song-card-title' }, song.title),
+        el('h3', { class: 'song-card-title' },
+          song.title,
+          song.link ? el('a', {
+            class: 'title-link-icon',
+            href: song.link,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            title: 'Open link',
+            onclick: (e) => e.stopPropagation()
+          }, '🔗') : null
+        ),
         el('div', { class: 'song-card-chips' }, ...chips)
       ),
       (metaBits.length || song.pace) ? bottomRow : null

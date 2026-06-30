@@ -204,14 +204,16 @@ a { color: var(--accent); }
 }
 .mini-chip--key { background: var(--paper); color: var(--ink-soft); }
 .mini-chip--tempo { background: var(--paper); color: var(--ink-soft); }
-.mini-chip--link {
-  background: none;
+
+.title-link-icon {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 14px;
   color: var(--ink);
   text-decoration: none;
-  font-size: 14px;
-  padding: 2px 4px;
+  vertical-align: middle;
 }
-.mini-chip--link:active { opacity: 0.6; }
+.title-link-icon:active { opacity: 0.6; }
 
 .song-card-meta {
   font-size: 13px;
