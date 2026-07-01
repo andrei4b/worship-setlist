@@ -1,4 +1,4 @@
-/* setlists.js — Setlists tab: list, builder, song refs by ID, clipboard export */
+/* setlists.js — Setlists tab: list + full detail page with drag reorder, auto-save */
 (function () {
 
 const SETLIST_SORT_OPTIONS = [
@@ -7,26 +7,58 @@ const SETLIST_SORT_OPTIONS = [
 ];
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, escapeHtml, toast, debounce } = UI;
+  const { el, clear, toast, debounce } = UI;
 
   let setlists = [];
   let query = '';
   let sortId = 'recent';
 
-  const root = el('div');
-  container.appendChild(root);
+  // Two child views inside container: list and detail
+  const listView  = el('div', { class: 'page-view' });
+  const detailView = el('div', { class: 'page-view page-view--hidden' });
+  container.appendChild(listView);
+  container.appendChild(detailView);
 
   async function load() {
     setlists = await DB.getSetlists();
-    render();
+    renderList();
   }
 
-  function refresh() { render(); }
+  function refresh() { renderList(); }
 
   function getSongById(id) {
     return ctx.getSongs().find(s => s.id === id) || null;
   }
 
+  // ── Auto-save ──────────────────────────────────────────────────────────
+  async function autoSave(setlist) {
+    setlist.updatedAt = Date.now();
+    await DB.saveSetlist(setlist);
+    const idx = setlists.findIndex(s => s.id === setlist.id);
+    if (idx >= 0) setlists[idx] = setlist; else setlists.push(setlist);
+  }
+
+  // ── Page transitions ───────────────────────────────────────────────────
+  function showDetail(setlist) {
+    renderDetail(setlist);
+    listView.classList.add('page-view--hidden');
+    detailView.classList.remove('page-view--hidden');
+    detailView.classList.add('page-view--slide-in');
+    requestAnimationFrame(() => detailView.classList.remove('page-view--slide-in'));
+  }
+
+  function showList() {
+    listView.classList.remove('page-view--hidden');
+    detailView.classList.add('page-view--slide-out');
+    setTimeout(() => {
+      detailView.classList.add('page-view--hidden');
+      detailView.classList.remove('page-view--slide-out');
+      clear(detailView);
+    }, 260);
+    renderList(); // refresh list (name/date may have changed)
+  }
+
+  // ── List view ──────────────────────────────────────────────────────────
   function getFiltered() {
     let list = setlists;
     if (query.trim()) {
@@ -41,8 +73,8 @@ function createSetlistsTab(container, ctx) {
     return list;
   }
 
-  function render() {
-    clear(root);
+  function renderList() {
+    clear(listView);
 
     const header = el('div', { class: 'app-header' },
       el('h1', { class: 'app-title' }, el('span', { class: 'mark' }, '☰'), 'Setlists'),
@@ -51,30 +83,31 @@ function createSetlistsTab(container, ctx) {
           type: 'search',
           placeholder: 'Search setlists…',
           value: query,
-          oninput: debounce((e) => { query = e.target.value; renderList(); }, 150)
+          oninput: debounce((e) => { query = e.target.value; renderListItems(); }, 150)
         })
       ),
       el('div', { class: 'sort-row' },
         ...SETLIST_SORT_OPTIONS.map(opt =>
           el('button', {
             class: 'chip-btn' + (sortId === opt.id ? ' is-active' : ''),
-            onclick: () => { sortId = opt.id; renderList(); updateChips(); }
+            onclick: () => { sortId = opt.id; renderListItems(); updateChips(); }
           }, opt.label)
         )
       )
     );
-    root.appendChild(header);
+    listView.appendChild(header);
 
     const main = el('div', { class: 'app-main' });
-    root.appendChild(main);
+    listView.appendChild(main);
     const listWrap = el('div');
     main.appendChild(listWrap);
-    renderListInto(listWrap);
+    renderListItemsInto(listWrap);
 
-    const fab = el('button', { class: 'fab', title: 'New setlist', onclick: () => openSetlistEditor(null) }, '+');
-    root.appendChild(fab);
+    listView.appendChild(
+      el('button', { class: 'fab', title: 'New setlist', onclick: createNewSetlist }, '+')
+    );
 
-    function renderList() { renderListInto(listWrap); }
+    function renderListItems() { renderListItemsInto(listWrap); }
     function updateChips() {
       header.querySelectorAll('.chip-btn').forEach((btn, i) => {
         btn.classList.toggle('is-active', SETLIST_SORT_OPTIONS[i].id === sortId);
@@ -82,19 +115,17 @@ function createSetlistsTab(container, ctx) {
     }
   }
 
-  function renderListInto(wrap) {
+  function renderListItemsInto(wrap) {
     clear(wrap);
     const list = getFiltered();
-
     if (setlists.length === 0) {
-      wrap.appendChild(emptyState('☰', 'No setlists yet', 'Build your first setlist from songs you\u2019ve added, plus any notes or headers you need.'));
+      wrap.appendChild(emptyState('☰', 'No setlists yet', 'Create your first setlist from songs you\u2019ve added.'));
       return;
     }
     if (list.length === 0) {
       wrap.appendChild(emptyState('🔍', 'No matches', 'Try a different search term.'));
       return;
     }
-
     const listEl = el('div', { class: 'list' });
     list.forEach(sl => listEl.appendChild(setlistCard(sl)));
     wrap.appendChild(listEl);
@@ -105,13 +136,17 @@ function createSetlistsTab(container, ctx) {
     const songCount = items.filter(i => i.type === 'song').length;
     const date = new Date(sl.updatedAt || sl.createdAt || Date.now());
     const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-
-    return el('div', { class: 'setlist-card', onclick: () => openSetlistEditor(sl) },
+    return el('div', { class: 'setlist-card', onclick: () => showDetail(sl) },
       el('h3', { class: 'setlist-card-title' }, sl.name || 'Untitled setlist'),
-      el('div', { class: 'setlist-card-sub' },
-        `${songCount} song${songCount === 1 ? '' : 's'} · ${dateStr}`
-      )
+      el('div', { class: 'setlist-card-sub' }, `${songCount} song${songCount === 1 ? '' : 's'} · ${dateStr}`)
     );
+  }
+
+  async function createNewSetlist() {
+    const sl = { id: DB.uid(), name: 'New setlist', items: [], createdAt: Date.now(), updatedAt: Date.now() };
+    await DB.saveSetlist(sl);
+    setlists.push(sl);
+    showDetail(sl);
   }
 
   function emptyState(glyph, title, body) {
@@ -122,36 +157,94 @@ function createSetlistsTab(container, ctx) {
     );
   }
 
-  // ---- Setlist editor ----
-  function openSetlistEditor(setlist) {
-    const isEdit = !!setlist;
-    const draft = setlist ? {
-      ...setlist,
-      items: (setlist.items || []).map(i => ({ ...i }))
-    } : {
-      id: DB.uid(),
-      name: '',
-      items: [],
-      createdAt: Date.now()
-    };
+  // ── Detail view ────────────────────────────────────────────────────────
+  function renderDetail(setlist) {
+    clear(detailView);
 
-    const nameInput = el('input', { type: 'text', value: draft.name, placeholder: 'e.g. Sunday Service — June 30' });
+    // Working copy
+    const draft = { ...setlist, items: (setlist.items || []).map(i => ({ ...i })) };
 
-    const itemsWrap = el('div', { class: 'setlist-items' });
+    // ---- Top bar ----
+    const titleEl = el('span', { class: 'detail-title-text' }, draft.name || 'Untitled setlist');
+    const titleInput = el('input', {
+      class: 'detail-title-input',
+      type: 'text',
+      value: draft.name,
+      placeholder: 'Setlist name'
+    });
+    titleInput.style.display = 'none';
 
+    // Toggle inline edit on title click
+    titleEl.addEventListener('click', () => {
+      titleEl.style.display = 'none';
+      titleInput.style.display = '';
+      titleInput.focus();
+      titleInput.select();
+    });
+
+    async function commitTitleEdit() {
+      const val = titleInput.value.trim();
+      if (val) draft.name = val;
+      titleEl.textContent = draft.name || 'Untitled setlist';
+      titleEl.style.display = '';
+      titleInput.style.display = 'none';
+      await autoSave(draft);
+    }
+    titleInput.addEventListener('blur', commitTitleEdit);
+    titleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') titleInput.blur(); });
+
+    const topBar = el('div', { class: 'detail-topbar' },
+      el('button', { class: 'detail-back-btn', onclick: showList, title: 'Back' },
+        el('span', null, '←')
+      ),
+      el('div', { class: 'detail-title-wrap' }, titleEl, titleInput),
+      el('div', { class: 'detail-topbar-actions' },
+        el('button', {
+          class: 'icon-btn',
+          title: 'Copy as text',
+          onclick: () => copySetlistText(draft)
+        }, '⧉'),
+        el('button', {
+          class: 'icon-btn is-danger',
+          title: 'Delete setlist',
+          onclick: async () => {
+            if (!confirm(`Delete "${draft.name || 'this setlist'}"? This can't be undone.`)) return;
+            await DB.deleteSetlist(draft.id);
+            setlists = setlists.filter(s => s.id !== draft.id);
+            showList();
+            toast('Setlist deleted');
+          }
+        }, '🗑')
+      )
+    );
+    detailView.appendChild(topBar);
+
+    // ---- Items list ----
+    const itemsWrap = el('div', { class: 'detail-items' });
+    detailView.appendChild(itemsWrap);
+
+    // ---- Add bar ----
+    const addBar = el('div', { class: 'detail-add-bar' },
+      el('button', { class: 'btn btn--secondary', style: 'flex:1', onclick: openAddSongPicker }, '+ Song'),
+      el('button', { class: 'btn btn--secondary', style: 'flex:1', onclick: openAddTextEntry }, '+ Text entry')
+    );
+    detailView.appendChild(addBar);
+
+    renderItems();
+
+    // ── Render items ───────────────────────────────────────────────────
     function renderItems() {
       clear(itemsWrap);
       if (!draft.items.length) {
-        itemsWrap.appendChild(el('p', { class: 'field-hint', style: 'padding:10px 0' }, 'No items yet. Add a song or a text entry below.'));
+        itemsWrap.appendChild(el('p', { class: 'detail-empty', style: 'padding:24px 20px; color:var(--ink-faint); font-size:14px;' },
+          'No items yet. Add a song or a text entry below.'));
         return;
       }
-      draft.items.forEach((item, idx) => {
-        itemsWrap.appendChild(itemRow(item, idx));
-      });
+      draft.items.forEach((item, idx) => itemsWrap.appendChild(buildItemRow(item, idx)));
+      initDragSort(itemsWrap, draft, async () => { await autoSave(draft); renderItems(); });
     }
 
-    function itemRow(item, idx) {
-      const isLast = idx === draft.items.length - 1;
+    function buildItemRow(item, idx) {
       let titleEl, metaEl;
 
       if (item.type === 'song') {
@@ -159,19 +252,15 @@ function createSetlistsTab(container, ctx) {
         const title = song ? song.title : '(song removed)';
         const effectiveKey = item.keyOverride || (song ? song.key : '');
         const effectiveTempo = song ? song.tempo : '';
-
         if (song && song.link) {
           titleEl = el('a', {
             class: 'setlist-item-title setlist-item-title--link',
-            href: song.link,
-            target: '_blank',
-            rel: 'noopener noreferrer',
+            href: song.link, target: '_blank', rel: 'noopener noreferrer',
             onclick: (e) => e.stopPropagation()
           }, title, el('span', { class: 'link-glyph' }, ' 🔗'));
         } else {
           titleEl = el('div', { class: 'setlist-item-title' }, title);
         }
-
         const metaBits = [];
         if (effectiveKey) metaBits.push(el('span', null, 'Key ' + effectiveKey));
         if (effectiveTempo) metaBits.push(el('span', null, effectiveTempo + ' bpm'));
@@ -179,19 +268,16 @@ function createSetlistsTab(container, ctx) {
         if (item.notes) metaBits.push(el('span', null, '\u201C' + item.notes + '\u201D'));
         metaEl = el('div', { class: 'setlist-item-meta' }, ...metaBits);
       } else {
-        titleEl = el('div', { class: 'setlist-item-title is-text' }, item.text || '(empty text)');
+        titleEl = el('div', { class: 'setlist-item-title is-text' }, item.text || '(empty)');
         metaEl = el('div', { class: 'setlist-item-meta' }, el('span', null, 'Text entry'));
       }
 
-      const row = el('div', { class: 'setlist-item-row' },
-        el('div', { class: 'order-rail' },
-          el('div', { class: 'order-num' }, String(idx + 1)),
-          !isLast ? el('div', { class: 'rail-line' }) : null
+      const row = el('div', { class: 'drag-item', 'data-idx': String(idx) },
+        el('div', { class: 'drag-handle', title: 'Drag to reorder' },
+          el('span', { class: 'drag-dots' }, '⠿')
         ),
         el('div', { class: 'setlist-item-body' }, titleEl, metaEl),
         el('div', { class: 'setlist-item-actions' },
-          el('button', { class: 'icon-btn', title: 'Move up', onclick: () => moveItem(idx, -1) }, '↑'),
-          el('button', { class: 'icon-btn', title: 'Move down', onclick: () => moveItem(idx, 1) }, '↓'),
           el('button', { class: 'icon-btn', title: 'Edit', onclick: () => editItem(idx) }, '✎'),
           el('button', { class: 'icon-btn is-danger', title: 'Remove', onclick: () => removeItem(idx) }, '✕')
         )
@@ -199,67 +285,52 @@ function createSetlistsTab(container, ctx) {
       return row;
     }
 
-    function moveItem(idx, dir) {
-      const newIdx = idx + dir;
-      if (newIdx < 0 || newIdx >= draft.items.length) return;
-      const [item] = draft.items.splice(idx, 1);
-      draft.items.splice(newIdx, 0, item);
-      renderItems();
-    }
-
-    function removeItem(idx) {
+    async function removeItem(idx) {
       draft.items.splice(idx, 1);
+      await autoSave(draft);
       renderItems();
     }
 
     function editItem(idx) {
       const item = draft.items[idx];
-      if (item.type === 'song') openSongOverrideEditor(item, () => renderItems());
-      else openTextEntryEditor(item, () => renderItems());
+      if (item.type === 'song') openSongOverrideEditor(item, async () => { await autoSave(draft); renderItems(); });
+      else openTextEntryEditor(item, async () => { await autoSave(draft); renderItems(); });
     }
 
+    // ── Song override editor ───────────────────────────────────────────
     function openSongOverrideEditor(item, onSave) {
       const song = getSongById(item.songId);
       const keyInput = el('input', { type: 'text', value: item.keyOverride || '', placeholder: song ? `Default: ${song.key || '—'}` : '' });
-      const notesInput = el('textarea', { placeholder: 'Optional notes for this setlist (e.g. capo 2, start quiet)' }, item.notes || '');
-
+      const notesInput = el('textarea', { placeholder: 'Optional notes (e.g. capo 2, start quiet)' }, item.notes || '');
       const body = el('div', null,
-        el('p', { style: 'font-weight:600; margin:0 0 14px; font-family: var(--font-display); font-size:16px;' }, song ? song.title : '(song removed)'),
+        el('p', { style: 'font-weight:600;margin:0 0 14px;font-family:var(--font-display);font-size:16px;' }, song ? song.title : '(song removed)'),
         formField('Key override', keyInput, 'Leave blank to use the song\u2019s default key'),
-        formField('Notes for this setlist', notesInput)
+        formField('Notes', notesInput)
       );
       const footer = el('div', { class: 'sheet-footer' },
-        el('button', {
-          class: 'btn btn--primary btn--block',
-          onclick: () => {
-            item.keyOverride = keyInput.value.trim();
-            item.notes = notesInput.value.trim();
-            closeSheet();
-            onSave();
-          }
-        }, 'Save')
+        el('button', { class: 'btn btn--primary btn--block', onclick: () => {
+          item.keyOverride = keyInput.value.trim();
+          item.notes = notesInput.value.trim();
+          closeSheet(); onSave();
+        }}, 'Save')
       );
       openSheet('Edit entry', body, footer);
     }
 
     function openTextEntryEditor(item, onSave) {
-      const textInput = el('textarea', { placeholder: 'e.g. Welcome & Announcements, Offering, Scripture reading…' }, item.text || '');
+      const textInput = el('textarea', { placeholder: 'e.g. Welcome, Offering, Scripture reading…' }, item.text || '');
       const body = el('div', null, formField('Text', textInput));
       const footer = el('div', { class: 'sheet-footer' },
-        el('button', {
-          class: 'btn btn--primary btn--block',
-          onclick: () => {
-            const val = textInput.value.trim();
-            if (!val) { toast('Text can\u2019t be empty', { variant: 'danger' }); return; }
-            item.text = val;
-            closeSheet();
-            onSave();
-          }
-        }, 'Save')
+        el('button', { class: 'btn btn--primary btn--block', onclick: () => {
+          const val = textInput.value.trim();
+          if (!val) { toast('Text can\u2019t be empty', { variant: 'danger' }); return; }
+          item.text = val; closeSheet(); onSave();
+        }}, 'Save')
       );
       openSheet('Edit text entry', body, footer);
     }
 
+    // ── Song picker ────────────────────────────────────────────────────
     function openAddSongPicker() {
       const allSongs = ctx.getSongs();
       let pq = '';
@@ -273,120 +344,182 @@ function createSetlistsTab(container, ctx) {
           : allSongs;
         if (!filtered.length) {
           listEl.appendChild(el('p', { class: 'field-hint', style: 'padding:14px 0' },
-            allSongs.length ? 'No songs match your search.' : 'You haven\u2019t added any songs yet. Add songs in the Songs tab first.'));
+            allSongs.length ? 'No songs match your search.' : 'Add songs in the Songs tab first.'));
           return;
         }
         filtered.forEach(song => {
-          listEl.appendChild(el('div', {
-            class: 'picker-row',
-            onclick: () => {
-              draft.items.push({ type: 'song', songId: song.id, keyOverride: '', notes: '' });
-              closeSheet();
-              renderItems();
-            }
-          },
+          listEl.appendChild(el('div', { class: 'picker-row', onclick: async () => {
+            draft.items.push({ type: 'song', songId: song.id, keyOverride: '', notes: '' });
+            closeSheet();
+            await autoSave(draft);
+            renderItems();
+          }},
             el('div', null,
               el('div', { class: 'picker-row-title' }, song.title),
               el('div', { class: 'picker-row-meta' }, [song.key, song.tempo ? song.tempo + ' bpm' : ''].filter(Boolean).join(' · '))
             ),
-            el('span', { style: 'color:var(--accent); font-size:20px; font-weight:600;' }, '+')
+            el('span', { style: 'color:var(--accent);font-size:20px;font-weight:600;' }, '+')
           ));
         });
       }
       searchInput.addEventListener('input', debounce((e) => { pq = e.target.value; renderPicker(); }, 120));
       renderPicker();
-
-      const body = el('div', null, el('div', { class: 'field' }, searchInput), listEl);
-      openSheet('Add a song', body, null);
+      openSheet('Add a song', el('div', null, el('div', { class: 'field' }, searchInput), listEl), null);
     }
 
     function openAddTextEntry() {
       const textInput = el('textarea', { placeholder: 'e.g. Welcome & Announcements, Offering, Scripture reading…' });
       const body = el('div', null, formField('Text', textInput));
       const footer = el('div', { class: 'sheet-footer' },
-        el('button', {
-          class: 'btn btn--primary btn--block',
-          onclick: () => {
-            const val = textInput.value.trim();
-            if (!val) { toast('Text can\u2019t be empty', { variant: 'danger' }); return; }
-            draft.items.push({ type: 'text', text: val });
-            closeSheet();
-            renderItems();
-          }
-        }, 'Add')
+        el('button', { class: 'btn btn--primary btn--block', onclick: async () => {
+          const val = textInput.value.trim();
+          if (!val) { toast('Text can\u2019t be empty', { variant: 'danger' }); return; }
+          draft.items.push({ type: 'text', text: val });
+          closeSheet();
+          await autoSave(draft);
+          renderItems();
+        }}, 'Add')
       );
       openSheet('Add text entry', body, footer);
     }
-
-    renderItems();
-
-    const addBar = el('div', { class: 'add-item-bar' },
-      el('button', { class: 'btn btn--secondary', style: 'flex:1', onclick: openAddSongPicker }, '+ Song'),
-      el('button', { class: 'btn btn--secondary', style: 'flex:1', onclick: openAddTextEntry }, '+ Text entry')
-    );
-
-    const body = el('div', null,
-      formField('Name', nameInput, null),
-      el('div', { class: 'section-label' }, 'Order of service'),
-      itemsWrap,
-      addBar
-    );
-
-    const footerButtons = [];
-    if (isEdit) {
-      footerButtons.push(
-        el('button', { class: 'btn btn--secondary', title: 'Copy as text', onclick: () => copySetlistText(draft) }, '⧉ Copy'),
-        el('button', {
-          class: 'btn btn--danger',
-          onclick: async () => {
-            if (!confirm(`Delete "${draft.name || 'this setlist'}"? This can't be undone.`)) return;
-            await DB.deleteSetlist(draft.id);
-            setlists = setlists.filter(s => s.id !== draft.id);
-            closeSheet();
-            render();
-            toast('Setlist deleted');
-          }
-        }, 'Delete')
-      );
-    }
-    footerButtons.push(el('button', {
-      class: 'btn btn--primary',
-      style: isEdit ? '' : 'flex:1',
-      onclick: async () => {
-        const name = nameInput.value.trim();
-        if (!name) { toast('Name is required', { variant: 'danger' }); return; }
-        const toSave = {
-          id: draft.id,
-          name,
-          items: draft.items,
-          createdAt: draft.createdAt || Date.now(),
-          updatedAt: Date.now()
-        };
-        await DB.saveSetlist(toSave);
-        const idx = setlists.findIndex(s => s.id === toSave.id);
-        if (idx >= 0) setlists[idx] = toSave; else setlists.push(toSave);
-        closeSheet();
-        render();
-        toast(isEdit ? 'Setlist updated' : 'Setlist created');
-      }
-    }, isEdit ? 'Save' : 'Create setlist'));
-
-    const footer = el('div', { class: 'sheet-footer', style: 'flex-wrap:wrap' }, ...footerButtons);
-
-    openSheet(isEdit ? 'Edit setlist' : 'New setlist', body, footer);
   }
 
+  // ── Drag-to-reorder ────────────────────────────────────────────────────
+  function initDragSort(container, draft, onDrop) {
+    let dragging = null;
+    let placeholder = null;
+    let startY = 0;
+    let startIdx = 0;
+    let containerRect = null;
+
+    function getRows() { return Array.from(container.querySelectorAll('.drag-item')); }
+
+    function getIdx(el) { return parseInt(el.getAttribute('data-idx'), 10); }
+
+    function makePlaceholder(height) {
+      const ph = document.createElement('div');
+      ph.className = 'drag-placeholder';
+      ph.style.height = height + 'px';
+      return ph;
+    }
+
+    container.querySelectorAll('.drag-handle').forEach(handle => {
+      handle.addEventListener('touchstart', onTouchStart, { passive: false });
+      handle.addEventListener('mousedown', onMouseDown);
+    });
+
+    function startDrag(row, clientY) {
+      dragging = row;
+      startIdx = getIdx(row);
+      startY = clientY;
+      containerRect = container.getBoundingClientRect();
+
+      const rect = row.getBoundingClientRect();
+      placeholder = makePlaceholder(rect.height);
+
+      row.classList.add('drag-item--dragging');
+      row.style.width = rect.width + 'px';
+      row.style.top = (rect.top - containerRect.top + container.scrollTop) + 'px';
+      row.style.left = (rect.left - containerRect.left) + 'px';
+
+      container.insertBefore(placeholder, row);
+      container.appendChild(row); // move to end so it renders on top
+    }
+
+    function moveDrag(clientY) {
+      if (!dragging) return;
+      const dy = clientY - startY;
+      const rect = dragging.getBoundingClientRect();
+      const rowTop = parseFloat(dragging.style.top) + dy;
+      dragging.style.top = rowTop + 'px';
+      startY = clientY;
+
+      // Find where placeholder should go
+      const rows = getRows().filter(r => r !== dragging);
+      const midY = dragging.getBoundingClientRect().top + dragging.offsetHeight / 2;
+
+      let insertBefore = null;
+      for (const row of rows) {
+        const r = row.getBoundingClientRect();
+        if (midY < r.top + r.height / 2) { insertBefore = row; break; }
+      }
+      if (insertBefore) container.insertBefore(placeholder, insertBefore);
+      else container.appendChild(placeholder);
+    }
+
+    async function endDrag() {
+      if (!dragging) return;
+      dragging.classList.remove('drag-item--dragging');
+      dragging.style.cssText = '';
+
+      // Determine new index from placeholder position
+      const rows = Array.from(container.querySelectorAll('.drag-item, .drag-placeholder'));
+      const phIdx = rows.indexOf(placeholder);
+      let newIdx = 0;
+      let count = 0;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i] === placeholder) { newIdx = count; break; }
+        if (rows[i].classList.contains('drag-item')) count++;
+      }
+
+      placeholder.remove();
+      placeholder = null;
+
+      // Re-insert dragging element at correct DOM position
+      const remainingRows = Array.from(container.querySelectorAll('.drag-item'));
+      if (newIdx >= remainingRows.length) container.appendChild(dragging);
+      else container.insertBefore(dragging, remainingRows[newIdx]);
+
+      // Update draft items array
+      if (newIdx !== startIdx) {
+        const [moved] = draft.items.splice(startIdx, 1);
+        draft.items.splice(newIdx, 0, moved);
+        await onDrop();
+      }
+
+      dragging = null;
+    }
+
+    function onTouchStart(e) {
+      const row = e.target.closest('.drag-item');
+      if (!row) return;
+      e.preventDefault();
+      startDrag(row, e.touches[0].clientY);
+      document.addEventListener('touchmove', onTouchMove, { passive: false });
+      document.addEventListener('touchend', onTouchEnd);
+    }
+    function onTouchMove(e) { e.preventDefault(); moveDrag(e.touches[0].clientY); }
+    function onTouchEnd() {
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      endDrag();
+    }
+
+    function onMouseDown(e) {
+      const row = e.target.closest('.drag-item');
+      if (!row) return;
+      startDrag(row, e.clientY);
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    }
+    function onMouseMove(e) { moveDrag(e.clientY); }
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      endDrag();
+    }
+  }
+
+  // ── Clipboard export ───────────────────────────────────────────────────
   async function copySetlistText(setlist) {
     const lines = (setlist.items || []).map(item => {
       if (item.type === 'text') return item.text;
       const song = getSongById(item.songId);
       if (!song) return '(song removed)';
-      const key = item.keyOverride || song.key || '—';
-      const tempo = song.tempo || '—';
-      return `${song.title} - ${key} - ${tempo}`;
+      return `${song.title} - ${item.keyOverride || song.key || '—'} - ${song.tempo || '—'}`;
     });
-    const finalText = (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
-    const ok = await FileUtil.copyToClipboard(finalText);
+    const text = (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
+    const ok = await FileUtil.copyToClipboard(text);
     toast(ok ? 'Copied to clipboard' : 'Could not copy — try again');
   }
 
