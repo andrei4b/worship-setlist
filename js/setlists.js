@@ -558,7 +558,10 @@ function createSetlistsTab(container, ctx) {
     // Merge songs (skip if ID already exists)
     const existingIds = new Set(ctx.getSongs().map(s => s.id));
     const newSongs = incomingSongs.filter(s => !existingIds.has(s.id));
-    if (newSongs.length) await DB.bulkSaveSongs(newSongs);
+    if (newSongs.length) {
+      await DB.bulkSaveSongs(newSongs);
+      await ctx.refreshSongs();
+    }
 
     // Merge setlists (skip if ID already exists)
     const existingSlIds = new Set(setlists.map(s => s.id));
