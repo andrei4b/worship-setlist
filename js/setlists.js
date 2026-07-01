@@ -204,26 +204,10 @@ function createSetlistsTab(container, ctx) {
       el('div', { class: 'detail-title-wrap' }, titleEl, titleInput),
       el('div', { class: 'detail-topbar-actions' },
         el('button', {
-          class: 'icon-btn',
-          title: 'Copy as text',
-          onclick: () => copySetlistText(draft)
-        }, '⧉'),
-        el('button', {
           class: 'kebab-btn',
           title: 'More options',
           onclick: () => openDetailMenu(draft)
-        }, '⋮'),
-        el('button', {
-          class: 'icon-btn is-danger',
-          title: 'Delete setlist',
-          onclick: async () => {
-            if (!confirm(`Delete "${draft.name || 'this setlist'}"? This can't be undone.`)) return;
-            await DB.deleteSetlist(draft.id);
-            setlists = setlists.filter(s => s.id !== draft.id);
-            showList();
-            toast('Setlist deleted');
-          }
-        }, '🗑')
+        }, '⋮')
       )
     );
     detailView.appendChild(topBar);
@@ -637,15 +621,17 @@ function createSetlistsTab(container, ctx) {
   // ── Detail page 3-dot menu ─────────────────────────────────────────────
   function openDetailMenu(draft) {
     openActionMenu([
-      { icon: '⬇', label: 'Export this setlist', onClick: () => exportOneSetlist(draft) },
+      { icon: '⧉', label: 'Copy as text', onClick: () => copySetlistText(draft) },
+      { icon: '🗑', label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
     ]);
   }
 
-  function exportOneSetlist(draft) {
-    const safeName = (draft.name || 'setlist').replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    const filename = `${safeName}-${FileUtil.dateStamp()}.json`;
-    FileUtil.downloadFile(filename, buildBundle([draft]), 'application/json');
-    toast('Saved ' + filename);
+  async function deleteSetlistFromDetail(draft) {
+    if (!confirm(`Delete "${draft.name || 'this setlist'}"? This can't be undone.`)) return;
+    await DB.deleteSetlist(draft.id);
+    setlists = setlists.filter(s => s.id !== draft.id);
+    showList();
+    toast('Setlist deleted');
   }
 
   function formField(label, inputEl, hint) {
