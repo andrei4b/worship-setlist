@@ -59,6 +59,24 @@ a { color: var(--accent); }
   top: 0;
   z-index: 5;
 }
+.app-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kebab-btn {
+  border: none;
+  background: none;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-s);
+  line-height: 1;
+  letter-spacing: 1px;
+}
+.kebab-btn:active { background: var(--line); }
 .app-title {
   font-family: var(--font-display);
   font-weight: 600;

@@ -77,7 +77,10 @@ function createSetlistsTab(container, ctx) {
     clear(listView);
 
     const header = el('div', { class: 'app-header' },
-      el('h1', { class: 'app-title' }, el('span', { class: 'mark' }, '☰'), 'Setlists'),
+      el('div', { class: 'app-header-top' },
+        el('h1', { class: 'app-title' }, el('span', { class: 'mark' }, '☰'), 'Setlists'),
+        el('button', { class: 'kebab-btn', title: 'More options', onclick: openSetlistsMenu }, '⋮')
+      ),
       el('div', { class: 'searchbar' },
         el('input', {
           type: 'search',
@@ -204,6 +207,11 @@ function createSetlistsTab(container, ctx) {
           title: 'Copy as text',
           onclick: () => copySetlistText(draft)
         }, '⧉'),
+        el('button', {
+          class: 'kebab-btn',
+          title: 'More options',
+          onclick: () => openDetailMenu(draft)
+        }, '⋮'),
         el('button', {
           class: 'icon-btn is-danger',
           title: 'Delete setlist',
@@ -521,6 +529,112 @@ function createSetlistsTab(container, ctx) {
     const text = (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
     const ok = await FileUtil.copyToClipboard(text);
     toast(ok ? 'Copied to clipboard' : 'Could not copy — try again');
+  }
+
+  // ── Bundle format helpers ──────────────────────────────────────────────
+  // A bundle = { type, version, songs: [...], setlists: [...] }
+  // Songs referenced by each setlist are embedded so the file is self-contained.
+
+  function buildBundle(setlistsToExport) {
+    // Collect all unique song IDs referenced
+    const songIds = new Set();
+    setlistsToExport.forEach(sl => {
+      (sl.items || []).forEach(item => { if (item.type === 'song') songIds.add(item.songId); });
+    });
+    const referencedSongs = ctx.getSongs().filter(s => songIds.has(s.id));
+    return JSON.stringify({
+      type: 'worship-planner-bundle',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      songs: referencedSongs,
+      setlists: setlistsToExport
+    }, null, 2);
+  }
+
+  async function importBundle(text) {
+    const data = JSON.parse(text);
+    // Accept both bundle format and plain setlist array
+    const incomingSongs = data.songs || [];
+    const incomingSetlists = Array.isArray(data) ? data : (data.setlists || [data]);
+
+    // Merge songs (skip if ID already exists)
+    const existingIds = new Set(ctx.getSongs().map(s => s.id));
+    const newSongs = incomingSongs.filter(s => !existingIds.has(s.id));
+    if (newSongs.length) await DB.bulkSaveSongs(newSongs);
+
+    // Merge setlists (skip if ID already exists)
+    const existingSlIds = new Set(setlists.map(s => s.id));
+    const newSetlists = incomingSetlists.filter(sl => !existingSlIds.has(sl.id)).map(sl => ({
+      ...sl,
+      id: sl.id || DB.uid(),
+      createdAt: sl.createdAt || Date.now(),
+      updatedAt: sl.updatedAt || Date.now()
+    }));
+    for (const sl of newSetlists) await DB.saveSetlist(sl);
+    setlists = [...setlists, ...newSetlists];
+
+    return { songs: newSongs.length, setlists: newSetlists.length };
+  }
+
+  // ── Setlists list 3-dot menu ───────────────────────────────────────────
+  function openSetlistsMenu() {
+    openActionMenu([
+      { icon: '⬆', label: 'Import setlists (JSON bundle)', onClick: openSetlistImportSheet },
+      { icon: '⬇', label: 'Export all setlists', onClick: exportAllSetlists },
+    ]);
+  }
+
+  function exportAllSetlists() {
+    if (!setlists.length) { toast('No setlists to export', { variant: 'danger' }); return; }
+    const filename = 'setlists-bundle.json';
+    FileUtil.downloadFile(filename, buildBundle(setlists), 'application/json');
+    toast('Saved ' + filename);
+  }
+
+  function openSetlistImportSheet() {
+    const fileInput = el('input', { type: 'file', accept: '.json,application/json' });
+    const drop = el('div', { class: 'import-drop' },
+      el('div', null, '📄'),
+      el('p', { style: 'margin:8px 0 14px' }, 'Choose a setlist bundle JSON file to import.'),
+      el('button', { class: 'btn btn--secondary', onclick: () => fileInput.click() }, 'Choose file'),
+      fileInput
+    );
+    const hint = el('div', { class: 'field-hint', style: 'margin-top:10px' },
+      'Import a bundle exported from this app. Referenced songs are imported automatically. Duplicates (same ID) are skipped.'
+    );
+    const body = el('div', null, drop, hint);
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const result = await importBundle(text);
+        closeSheet(true);
+        renderList();
+        toast(`Imported ${result.setlists} setlist${result.setlists === 1 ? '' : 's'}` +
+          (result.songs ? ` + ${result.songs} song${result.songs === 1 ? '' : 's'}` : ''));
+      } catch (err) {
+        console.error(err);
+        toast('Could not read that file', { variant: 'danger' });
+      }
+    });
+
+    openSheet('Import setlists', body, null);
+  }
+
+  // ── Detail page 3-dot menu ─────────────────────────────────────────────
+  function openDetailMenu(draft) {
+    openActionMenu([
+      { icon: '⬇', label: 'Export this setlist', onClick: () => exportOneSetlist(draft) },
+    ]);
+  }
+
+  function exportOneSetlist(draft) {
+    const safeName = (draft.name || 'setlist').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const filename = safeName + '-bundle.json';
+    FileUtil.downloadFile(filename, buildBundle([draft]), 'application/json');
+    toast('Saved ' + filename);
   }
 
   function formField(label, inputEl, hint) {

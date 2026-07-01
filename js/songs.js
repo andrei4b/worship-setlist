@@ -44,7 +44,10 @@ function createSongsTab(container, ctx) {
     clear(root);
 
     const header = el('div', { class: 'app-header' },
-      el('h1', { class: 'app-title' }, el('span', { class: 'mark' }, '♪'), 'Songs'),
+      el('div', { class: 'app-header-top' },
+        el('h1', { class: 'app-title' }, el('span', { class: 'mark' }, '♪'), 'Songs'),
+        el('button', { class: 'kebab-btn', title: 'More options', onclick: openSongsMenu }, '⋮')
+      ),
       el('div', { class: 'searchbar' },
         el('input', {
           type: 'search',
@@ -71,12 +74,8 @@ function createSongsTab(container, ctx) {
     main.appendChild(listWrap);
     renderListInto(listWrap);
 
-    // FAB row: import + add
-    const fabRow = el('div', { class: 'fab-row' },
-      el('button', { class: 'fab-secondary', title: 'Import songs', onclick: openImportSheet }, '⇪'),
-      el('button', { class: 'fab', title: 'Add song', onclick: () => openSongForm(null) }, '+')
-    );
-    root.appendChild(fabRow);
+    // Single FAB: add song
+    root.appendChild(el('button', { class: 'fab', title: 'Add song', onclick: () => openSongForm(null) }, '+'));
 
     function renderList() { renderListInto(listWrap); }
     function updateSortChips() {
@@ -232,38 +231,45 @@ function createSongsTab(container, ctx) {
     openSheet(isEdit ? 'Edit song' : 'New song', body, footer);
   }
 
+  // ---- 3-dot menu ----
+  function openSongsMenu() {
+    openActionMenu([
+      { icon: '⬆', label: 'Import from CSV', onClick: () => openImportSheet('csv') },
+      { icon: '⬆', label: 'Import from JSON', onClick: () => openImportSheet('json') },
+      { icon: '⬇', label: 'Export all as JSON', onClick: exportSongsJSON },
+      { icon: '⬇', label: 'Export all as CSV', onClick: exportSongsCSV },
+    ]);
+  }
+
   // ---- Import sheet ----
-  function openImportSheet() {
-    const fileInput = el('input', { type: 'file', accept: '.csv,.json,application/json,text/csv' });
+  function openImportSheet(type) {
+    const accept = type === 'csv' ? '.csv,text/csv' : '.json,application/json';
+    const label = type === 'csv' ? 'CSV' : 'JSON';
+    const fileInput = el('input', { type: 'file', accept });
+
     const drop = el('div', { class: 'import-drop' },
       el('div', null, '📄'),
-      el('p', { style: 'margin:8px 0 14px' }, 'Choose a CSV or JSON file to import songs.'),
+      el('p', { style: 'margin:8px 0 14px' }, `Choose a ${label} file to import songs.`),
       el('button', { class: 'btn btn--secondary', onclick: () => fileInput.click() }, 'Choose file'),
       fileInput
     );
 
-    const status = el('div', { class: 'field-hint', style: 'margin-top:10px' },
-      'CSV columns: title, key, tempo, link, structure, tags, pace (tags use | to separate multiple values; pace must be Slow, Medium, or Fast).'
-    );
+    const hint = type === 'csv'
+      ? 'Columns: title, key, tempo, link, structure, tags (pipe-separated), pace (Slow / Medium / Fast).'
+      : 'Expected format: exported JSON from this app, or an array of song objects.';
 
-    const body = el('div', null, drop, status);
-    const footer = el('div', { class: 'sheet-footer' },
-      el('button', { class: 'btn btn--secondary btn--block', onclick: exportSongs }, 'Export all as JSON')
-    );
+    const body = el('div', null, drop, el('div', { class: 'field-hint', style: 'margin-top:10px' }, hint));
 
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
       if (!file) return;
       try {
         const text = await file.text();
-        let imported;
-        if (file.name.toLowerCase().endsWith('.json')) imported = JSONUtil.jsonToSongs(text);
-        else imported = CSVUtil.csvToSongs(text);
-
+        const imported = type === 'json' ? JSONUtil.jsonToSongs(text) : CSVUtil.csvToSongs(text);
         if (!imported.length) { toast('No songs found in file', { variant: 'danger' }); return; }
         await DB.bulkSaveSongs(imported);
         songs = [...songs, ...imported];
-        closeSheet();
+        closeSheet(true);
         render();
         toast(`Imported ${imported.length} song${imported.length === 1 ? '' : 's'}`);
       } catch (err) {
@@ -272,13 +278,19 @@ function createSongsTab(container, ctx) {
       }
     });
 
-    openSheet('Import songs', body, footer);
+    openSheet(`Import songs from ${label}`, body, null);
   }
 
-  function exportSongs() {
+  function exportSongsJSON() {
     if (!songs.length) { toast('No songs to export', { variant: 'danger' }); return; }
     FileUtil.downloadFile('songs.json', JSONUtil.songsToJSON(songs), 'application/json');
-    toast('Exported songs.json');
+    toast('Saved songs.json');
+  }
+
+  function exportSongsCSV() {
+    if (!songs.length) { toast('No songs to export', { variant: 'danger' }); return; }
+    FileUtil.downloadFile('songs.csv', CSVUtil.songsToCSV(songs), 'text/csv');
+    toast('Saved songs.csv');
   }
 
   function formField(label, inputEl, hint) {
