@@ -166,6 +166,7 @@ function createSetlistsTab(container, ctx) {
 
     // Working copy
     const draft = { ...setlist, items: (setlist.items || []).map(i => ({ ...i })) };
+    let activeIdx = null;
 
     // ---- Top bar ----
     const titleEl = el('span', { class: 'detail-title-text' }, draft.name || 'Untitled setlist');
@@ -253,44 +254,54 @@ function createSetlistsTab(container, ctx) {
     }
 
     function buildItemRow(item, idx) {
-      let titleEl, metaEl;
+      let titleLine, subLine = null;
 
       if (item.type === 'song') {
         const song = getSongById(item.songId);
         const title = song ? song.title : '(song removed)';
         const effectiveKey = item.keyOverride || (song ? song.key : '');
         const effectiveTempo = song ? song.tempo : '';
-        if (song && song.link) {
-          titleEl = el('a', {
-            class: 'setlist-item-title setlist-item-title--link',
-            href: song.link, target: '_blank', rel: 'noopener noreferrer',
-            onclick: (e) => e.stopPropagation()
-          }, title, el('span', { class: 'link-glyph' }, ' 🔗'));
-        } else {
-          titleEl = el('div', { class: 'setlist-item-title' }, title);
-        }
-        const metaBits = [];
-        if (effectiveKey) metaBits.push(el('span', null, 'Key ' + effectiveKey));
-        if (effectiveTempo) metaBits.push(el('span', null, effectiveTempo + ' bpm'));
-        if (item.keyOverride) metaBits.push(el('span', { class: 'override-note' }, 'overridden'));
-        if (item.notes) metaBits.push(el('span', null, '\u201C' + item.notes + '\u201D'));
-        metaEl = el('div', { class: 'setlist-item-meta' }, ...metaBits);
+
+        const titleBits = [el('span', { class: 'setlist-item-title' }, title)];
+        if (effectiveKey) titleBits.push(el('span', { class: 'setlist-item-inline-meta' }, effectiveKey));
+        if (effectiveTempo) titleBits.push(el('span', { class: 'setlist-item-inline-meta' }, effectiveTempo + ' bpm'));
+        titleLine = el('div', { class: 'setlist-item-titleline' }, ...titleBits);
+
+        const subBits = [];
+        if (item.keyOverride) subBits.push(el('span', { class: 'override-note' }, 'overridden'));
+        if (item.notes) subBits.push(el('span', null, '\u201C' + item.notes + '\u201D'));
+        if (subBits.length) subLine = el('div', { class: 'setlist-item-meta' }, ...subBits);
       } else {
-        titleEl = el('div', { class: 'setlist-item-title is-text' }, item.text || '(empty)');
-        metaEl = el('div', { class: 'setlist-item-meta' }, el('span', null, 'Text entry'));
+        titleLine = el('div', { class: 'setlist-item-titleline' },
+          el('span', { class: 'setlist-item-title is-text' }, item.text || '(empty)')
+        );
       }
+
+      const body = subLine
+        ? el('div', { class: 'setlist-item-body' }, titleLine, subLine)
+        : el('div', { class: 'setlist-item-body' }, titleLine);
 
       const row = el('div', { class: 'drag-item', 'data-idx': String(idx) },
         el('div', { class: 'drag-handle', title: 'Drag to reorder' },
           el('span', { class: 'drag-dots' }, '⠿')
         ),
-        el('div', { class: 'setlist-item-body' }, titleEl, metaEl),
+        body,
         el('div', { class: 'setlist-item-actions' },
-          el('button', { class: 'icon-btn', title: 'Edit', onclick: () => editItem(idx) }, '✎'),
-          el('button', { class: 'icon-btn is-danger', title: 'Remove', onclick: () => removeItem(idx) }, '✕')
+          el('button', { class: 'icon-btn', title: 'Edit', onclick: (e) => { e.stopPropagation(); editItem(idx); } }, '✎'),
+          el('button', { class: 'icon-btn is-danger', title: 'Remove', onclick: (e) => { e.stopPropagation(); removeItem(idx); } }, '✕')
         )
       );
+      if (idx === activeIdx) row.classList.add('is-active');
+      row.addEventListener('click', () => setActiveIdx(idx));
       return row;
+    }
+
+    function setActiveIdx(idx) {
+      const next = activeIdx === idx ? null : idx;
+      activeIdx = next;
+      itemsWrap.querySelectorAll('.drag-item').forEach(row => {
+        row.classList.toggle('is-active', parseInt(row.getAttribute('data-idx'), 10) === next);
+      });
     }
 
     async function removeItem(idx) {
