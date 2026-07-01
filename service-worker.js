@@ -1,6 +1,6 @@
 /* service-worker.js — cache-first offline support */
 
-const CACHE_NAME = 'worship-planner-v2';
+const CACHE_NAME = 'worship-planner-v3';
 const ASSETS = [
   './',
   './index.html',
