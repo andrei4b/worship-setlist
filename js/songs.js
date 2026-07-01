@@ -127,15 +127,14 @@ function createSongsTab(container, ctx) {
     },
       el('div', { class: 'song-card-top' },
         el('h3', { class: 'song-card-title' },
-          song.title,
           song.link ? el('a', {
-            class: 'title-link-icon',
+            class: 'song-card-title-link',
             href: song.link,
             target: '_blank',
             rel: 'noopener noreferrer',
             title: 'Open link',
             onclick: (e) => e.stopPropagation()
-          }, '🔗') : null
+          }, song.title) : song.title
         ),
         el('div', { class: 'song-card-chips' }, ...chips)
       ),

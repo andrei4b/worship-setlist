@@ -223,15 +223,11 @@ a { color: var(--accent); }
 .mini-chip--key { background: var(--paper); color: var(--ink-soft); }
 .mini-chip--tempo { background: var(--paper); color: var(--ink-soft); }
 
-.title-link-icon {
-  display: inline-block;
-  margin-left: 6px;
-  font-size: 14px;
-  color: var(--ink);
+.song-card-title-link {
+  color: inherit;
   text-decoration: none;
-  vertical-align: middle;
 }
-.title-link-icon:active { opacity: 0.6; }
+.song-card-title-link:active { color: var(--accent); }
 
 .song-card-meta {
   font-size: 13px;
