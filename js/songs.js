@@ -28,8 +28,7 @@ function createSongsTab(container, ctx) {
       list = list.filter(s =>
         s.title.toLowerCase().includes(q) ||
         (s.key || '').toLowerCase().includes(q) ||
-        (s.pace || '').toLowerCase().includes(q) ||
-        (s.tags || []).some(t => t.toLowerCase().includes(q))
+        (s.pace || '').toLowerCase().includes(q)
       );
     }
     list = [...list];
@@ -51,7 +50,7 @@ function createSongsTab(container, ctx) {
       el('div', { class: 'searchbar' },
         el('input', {
           type: 'search',
-          placeholder: 'Search title, key, or tag…',
+          placeholder: 'Search title, key, or pace…',
           value: query,
           oninput: debounce((e) => { query = e.target.value; renderList(); }, 150)
         })
@@ -116,7 +115,6 @@ function createSongsTab(container, ctx) {
 
     const metaBits = [];
     if (song.structure) metaBits.push(el('span', null, song.structure));
-    (song.tags || []).forEach(t => metaBits.push(el('span', { class: 'tag-pill' }, t)));
 
     const paceClass = song.pace ? ' pace-badge--' + song.pace.toLowerCase() : '';
     const bottomRow = el('div', { class: 'song-card-bottom' },
@@ -157,8 +155,8 @@ function createSongsTab(container, ctx) {
   // ---- Song form sheet ----
   function openSongForm(song) {
     const isEdit = !!song;
-    const draft = song ? { ...song, tags: [...(song.tags || [])] } : {
-      title: '', key: '', tempo: '', link: '', structure: '', tags: [], pace: ''
+    const draft = song ? { ...song } : {
+      title: '', key: '', tempo: '', link: '', structure: '', pace: ''
     };
 
     const titleInput = el('input', { type: 'text', value: draft.title, placeholder: 'e.g. Amazing Grace' });
@@ -166,7 +164,6 @@ function createSongsTab(container, ctx) {
     const tempoInput = el('input', { type: 'text', value: draft.tempo, placeholder: 'e.g. 72' });
     const linkInput = el('input', { type: 'url', value: draft.link, placeholder: 'https://…' });
     const structureInput = el('textarea', { placeholder: 'e.g. Intro, V1, C, V2, C, Bridge, C, Outro' }, draft.structure);
-    const tagsInput = el('input', { type: 'text', value: draft.tags.join(', '), placeholder: 'e.g. Christmas, Upbeat' });
     const paceSelect = el('select', null,
       el('option', { value: '' }, 'None'),
       el('option', { value: 'Slow', selected: draft.pace === 'Slow' }, 'Slow'),
@@ -186,7 +183,6 @@ function createSongsTab(container, ctx) {
         if (url) window.open(url, '_blank', 'noopener,noreferrer');
       }),
       formField('Structure', structureInput, 'Free text — verse/chorus order, notes, etc.'),
-      formField('Tags / category', tagsInput, 'Comma-separated, e.g. Christmas, Upbeat'),
       formField('Pace', paceSelect, 'Slow, Medium, or Fast')
     );
 
@@ -214,7 +210,6 @@ function createSongsTab(container, ctx) {
             tempo: tempoInput.value.trim(),
             link: linkInput.value.trim(),
             structure: structureInput.value.trim(),
-            tags: tagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             pace: paceSelect.value,
             createdAt: draft.createdAt || Date.now()
           };
@@ -234,38 +229,31 @@ function createSongsTab(container, ctx) {
   // ---- 3-dot menu ----
   function openSongsMenu() {
     openActionMenu([
-      { icon: '⬆', label: 'Import from CSV', onClick: () => openImportSheet('csv') },
-      { icon: '⬆', label: 'Import from JSON', onClick: () => openImportSheet('json') },
-      { icon: '⬇', label: 'Export all as JSON', onClick: exportSongsJSON },
-      { icon: '⬇', label: 'Export all as CSV', onClick: exportSongsCSV },
+      { icon: '⬇', label: 'Import songs', onClick: openImportSheet },
+      { icon: '⬆', label: 'Export all songs', onClick: exportSongsJSON },
     ]);
   }
 
   // ---- Import sheet ----
-  function openImportSheet(type) {
-    const accept = type === 'csv' ? '.csv,text/csv' : '.json,application/json';
-    const label = type === 'csv' ? 'CSV' : 'JSON';
-    const fileInput = el('input', { type: 'file', accept });
-
+  function openImportSheet() {
+    const fileInput = el('input', { type: 'file', accept: '.json,application/json' });
     const drop = el('div', { class: 'import-drop' },
       el('div', null, '📄'),
-      el('p', { style: 'margin:8px 0 14px' }, `Choose a ${label} file to import songs.`),
+      el('p', { style: 'margin:8px 0 14px' }, 'Choose a JSON file to import songs.'),
       el('button', { class: 'btn btn--secondary', onclick: () => fileInput.click() }, 'Choose file'),
       fileInput
     );
-
-    const hint = type === 'csv'
-      ? 'Columns: title, key, tempo, link, structure, tags (pipe-separated), pace (Slow / Medium / Fast).'
-      : 'Expected format: exported JSON from this app, or an array of song objects.';
-
-    const body = el('div', null, drop, el('div', { class: 'field-hint', style: 'margin-top:10px' }, hint));
+    const hint = el('div', { class: 'field-hint', style: 'margin-top:10px' },
+      'Expected format: JSON exported from this app, or an array of song objects.'
+    );
+    const body = el('div', null, drop, hint);
 
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
       if (!file) return;
       try {
         const text = await file.text();
-        const imported = type === 'json' ? JSONUtil.jsonToSongs(text) : CSVUtil.csvToSongs(text);
+        const imported = JSONUtil.jsonToSongs(text);
         if (!imported.length) { toast('No songs found in file', { variant: 'danger' }); return; }
         await DB.bulkSaveSongs(imported);
         songs = [...songs, ...imported];
@@ -278,19 +266,14 @@ function createSongsTab(container, ctx) {
       }
     });
 
-    openSheet(`Import songs from ${label}`, body, null);
+    openSheet('Import songs', body, null);
   }
 
   function exportSongsJSON() {
     if (!songs.length) { toast('No songs to export', { variant: 'danger' }); return; }
-    FileUtil.downloadFile('songs.json', JSONUtil.songsToJSON(songs), 'application/json');
-    toast('Saved songs.json');
-  }
-
-  function exportSongsCSV() {
-    if (!songs.length) { toast('No songs to export', { variant: 'danger' }); return; }
-    FileUtil.downloadFile('songs.csv', CSVUtil.songsToCSV(songs), 'text/csv');
-    toast('Saved songs.csv');
+    const filename = `songs-${FileUtil.dateStamp()}.json`;
+    FileUtil.downloadFile(filename, JSONUtil.songsToJSON(songs), 'application/json');
+    toast('Saved ' + filename);
   }
 
   function formField(label, inputEl, hint) {

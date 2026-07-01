@@ -579,14 +579,14 @@ function createSetlistsTab(container, ctx) {
   // ── Setlists list 3-dot menu ───────────────────────────────────────────
   function openSetlistsMenu() {
     openActionMenu([
-      { icon: '⬆', label: 'Import setlists (JSON bundle)', onClick: openSetlistImportSheet },
-      { icon: '⬇', label: 'Export all setlists', onClick: exportAllSetlists },
+      { icon: '⬇', label: 'Import setlists', onClick: openSetlistImportSheet },
+      { icon: '⬆', label: 'Export all setlists', onClick: exportAllSetlists },
     ]);
   }
 
   function exportAllSetlists() {
     if (!setlists.length) { toast('No setlists to export', { variant: 'danger' }); return; }
-    const filename = 'setlists-bundle.json';
+    const filename = `setlists-${FileUtil.dateStamp()}.json`;
     FileUtil.downloadFile(filename, buildBundle(setlists), 'application/json');
     toast('Saved ' + filename);
   }
@@ -632,7 +632,7 @@ function createSetlistsTab(container, ctx) {
 
   function exportOneSetlist(draft) {
     const safeName = (draft.name || 'setlist').replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    const filename = safeName + '-bundle.json';
+    const filename = `${safeName}-${FileUtil.dateStamp()}.json`;
     FileUtil.downloadFile(filename, buildBundle([draft]), 'application/json');
     toast('Saved ' + filename);
   }

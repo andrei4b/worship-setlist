@@ -51,7 +51,7 @@ function debounce(fn, wait) {
 }
 
 // ---- CSV ----
-const SONG_FIELDS = ['title', 'key', 'tempo', 'link', 'structure', 'tags', 'pace'];
+const SONG_FIELDS = ['title', 'key', 'tempo', 'link', 'structure', 'pace'];
 
 function csvEscape(value) {
   const s = String(value ?? '');
@@ -106,7 +106,6 @@ function csvToSongs(text) {
       tempo: obj.tempo || '',
       link: obj.link || '',
       structure: obj.structure || '',
-      tags: obj.tags ? obj.tags.split('|').map(t => t.trim()).filter(Boolean) : [],
       pace: normalizePace(obj.pace),
       createdAt: Date.now()
     };
@@ -135,10 +134,17 @@ function jsonToSongs(text) {
     tempo: s.tempo || '',
     link: s.link || '',
     structure: s.structure || '',
-    tags: Array.isArray(s.tags) ? s.tags : (typeof s.tags === 'string' ? s.tags.split('|').map(t => t.trim()).filter(Boolean) : []),
     pace: normalizePace(s.pace),
     createdAt: s.createdAt || Date.now()
   }));
+}
+
+function dateStamp() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function downloadFile(filename, content, mime) {
@@ -171,6 +177,6 @@ async function copyToClipboard(text) {
 window.UI = { el, clear, escapeHtml, toast, debounce };
 window.CSVUtil = { songsToCSV, csvToSongs };
 window.JSONUtil = { songsToJSON, jsonToSongs };
-window.FileUtil = { downloadFile, copyToClipboard };
+window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 
 })();
