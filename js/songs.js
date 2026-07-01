@@ -27,7 +27,6 @@ function createSongsTab(container, ctx) {
       const q = query.trim().toLowerCase();
       list = list.filter(s =>
         s.title.toLowerCase().includes(q) ||
-        (s.key || '').toLowerCase().includes(q) ||
         (s.pace || '').toLowerCase().includes(q)
       );
     }
@@ -50,7 +49,7 @@ function createSongsTab(container, ctx) {
       el('div', { class: 'searchbar' },
         el('input', {
           type: 'search',
-          placeholder: 'Search title, key, or pace…',
+          placeholder: 'Search title or pace…',
           value: query,
           oninput: debounce((e) => { query = e.target.value; renderList(); }, 150)
         })

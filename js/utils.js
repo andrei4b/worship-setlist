@@ -12,6 +12,9 @@ function el(tag, attrs, ...children) {
       else if (v !== false && v !== null && v !== undefined) node.setAttribute(k, v);
     }
   }
+  if ((tag === 'input' || tag === 'textarea') && !node.hasAttribute('autocomplete')) {
+    node.setAttribute('autocomplete', 'off');
+  }
   for (const child of children.flat(Infinity)) {
     if (child === null || child === undefined || child === false) continue;
     node.appendChild(child instanceof Node ? child : document.createTextNode(String(child)));
