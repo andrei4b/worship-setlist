@@ -554,7 +554,7 @@ a { color: var(--accent); }
 .detail-items {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 16px calc(90px + var(--safe-bottom));
+  padding: 8px 16px calc(150px + var(--safe-bottom));
   position: relative;
 }
 .detail-add-bar {
@@ -686,16 +686,11 @@ a { color: var(--accent); }
   margin-top: 14px;
 }
 
-.override-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11px;
+.setlist-item-inline-meta.is-overridden {
   color: var(--accent-press);
   background: var(--accent-soft);
   padding: 1px 6px;
   border-radius: 999px;
-  margin-left: 4px;
 }
 
 /* ============ Song picker ============ */

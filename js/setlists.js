@@ -247,14 +247,17 @@ function createSetlistsTab(container, ctx) {
         const effectiveTempo = song ? song.tempo : '';
 
         const titleBits = [el('span', { class: 'setlist-item-title' }, title)];
-        if (effectiveKey) titleBits.push(el('span', { class: 'setlist-item-inline-meta' }, effectiveKey));
-        if (effectiveTempo) titleBits.push(el('span', { class: 'setlist-item-inline-meta' }, effectiveTempo + ' bpm'));
+        if (effectiveKey) {
+          titleBits.push(el('span', {
+            class: 'setlist-item-inline-meta' + (item.keyOverride ? ' is-overridden' : '')
+          }, effectiveKey));
+        }
+        if (effectiveTempo) titleBits.push(el('span', { class: 'setlist-item-inline-meta' }, effectiveTempo));
         titleLine = el('div', { class: 'setlist-item-titleline' }, ...titleBits);
 
-        const subBits = [];
-        if (item.keyOverride) subBits.push(el('span', { class: 'override-note' }, 'overridden'));
-        if (item.notes) subBits.push(el('span', null, '\u201C' + item.notes + '\u201D'));
-        if (subBits.length) subLine = el('div', { class: 'setlist-item-meta' }, ...subBits);
+        if (item.notes) {
+          subLine = el('div', { class: 'setlist-item-meta' }, el('span', null, '\u201C' + item.notes + '\u201D'));
+        }
       } else {
         titleLine = el('div', { class: 'setlist-item-titleline' },
           el('span', { class: 'setlist-item-title is-text' }, item.text || '(empty)')
