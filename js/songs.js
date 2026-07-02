@@ -297,16 +297,26 @@ function createSongsTab(container, ctx) {
       sl.updatedAt = Date.now();
       await DB.saveSetlist(sl);
       if (ctx.refreshSetlists) ctx.refreshSetlists();
-      closeSheet();
+      closeSheet(true);
       toast(`Added to "${sl.name || 'Untitled setlist'}"`);
     }
 
-    async function createAndAdd() {
-      const sl = { id: DB.uid(), name: 'New setlist', items: [], createdAt: Date.now(), updatedAt: Date.now() };
-      await addToSetlist(sl);
+    function openNewSetlistPrompt() {
+      const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning' });
+      const body = el('div', null, formField('Setlist name', nameInput));
+      const footer = el('div', { class: 'sheet-footer' },
+        el('button', {
+          class: 'btn btn--primary btn--block',
+          onclick: () => {
+            const name = nameInput.value.trim() || 'New setlist';
+            addToSetlist({ id: DB.uid(), name, items: [], createdAt: Date.now(), updatedAt: Date.now() });
+          }
+        }, 'Create & Add')
+      );
+      openSheet('New setlist', body, footer);
     }
 
-    const newRow = el('div', { class: 'picker-row picker-row--new', onclick: createAndAdd },
+    const newRow = el('div', { class: 'picker-row picker-row--new', onclick: openNewSetlistPrompt },
       el('div', { class: 'picker-row-title' }, '+ New setlist')
     );
 
