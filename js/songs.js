@@ -3,15 +3,18 @@
 
 const { el, clear, escapeHtml, toast, debounce } = UI;
 
-const SORT_OPTIONS = [
-  { id: 'title-asc', label: 'Title A–Z' },
-  { id: 'recent', label: 'Recently added' }
-];
+const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
+const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+
+function groupLetter(title) {
+  const c = (title || '').trim().charAt(0).toUpperCase();
+  return /[A-Z]/.test(c) ? c : '#';
+}
 
 function createSongsTab(container, ctx) {
   let songs = [];
   let query = '';
-  let sortId = 'title-asc';
+  let paceFilter = null;
 
   const root = el('div');
   container.appendChild(root);
@@ -30,11 +33,9 @@ function createSongsTab(container, ctx) {
         (s.pace || '').toLowerCase().includes(q)
       );
     }
+    if (paceFilter) list = list.filter(s => s.pace === paceFilter);
     list = [...list];
-    switch (sortId) {
-      case 'title-asc': list.sort((a, b) => a.title.localeCompare(b.title)); break;
-      case 'recent': list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); break;
-    }
+    list.sort((a, b) => a.title.localeCompare(b.title));
     return list;
   }
 
@@ -55,11 +56,11 @@ function createSongsTab(container, ctx) {
         })
       ),
       el('div', { class: 'sort-row' },
-        ...SORT_OPTIONS.map(opt =>
+        ...PACE_OPTIONS.map(pace =>
           el('button', {
-            class: 'chip-btn' + (sortId === opt.id ? ' is-active' : ''),
-            onclick: () => { sortId = opt.id; renderList(); updateSortChips(); }
-          }, opt.label)
+            class: 'chip-btn' + (paceFilter === pace ? ' is-active' : ''),
+            onclick: () => { paceFilter = paceFilter === pace ? null : pace; renderList(); updatePaceChips(); }
+          }, pace)
         )
       )
     );
@@ -70,24 +71,30 @@ function createSongsTab(container, ctx) {
 
     const listWrap = el('div');
     main.appendChild(listWrap);
-    renderListInto(listWrap);
+
+    const scrubberWrap = el('div', { class: 'index-scrubber-wrap' });
+    root.appendChild(scrubberWrap);
 
     // Single FAB: add song
     root.appendChild(el('button', { class: 'fab', title: 'Add song', onclick: () => openSongForm(null) }, '+'));
 
-    function renderList() { renderListInto(listWrap); }
-    function updateSortChips() {
+    function renderList() {
+      const list = getFiltered();
+      renderListInto(listWrap, list);
+      renderScrubber(scrubberWrap, listWrap, list);
+    }
+    function updatePaceChips() {
       header.querySelectorAll('.chip-btn').forEach((btn, i) => {
-        btn.classList.toggle('is-active', SORT_OPTIONS[i].id === sortId);
+        btn.classList.toggle('is-active', PACE_OPTIONS[i] === paceFilter);
       });
     }
 
+    renderList();
     root._renderList = renderList;
   }
 
-  function renderListInto(wrap) {
+  function renderListInto(wrap, list) {
     clear(wrap);
-    const list = getFiltered();
 
     if (songs.length === 0) {
       wrap.appendChild(emptyState(
@@ -107,6 +114,66 @@ function createSongsTab(container, ctx) {
     wrap.appendChild(listEl);
   }
 
+  // ---- A–Z index scrubber ----
+  function renderScrubber(container, listWrap, list) {
+    clear(container);
+    if (!list.length) return;
+
+    const available = new Set(list.map(s => groupLetter(s.title)));
+    const popover = el('div', { class: 'index-popover' });
+    const bar = el('div', { class: 'index-scrubber' },
+      ...INDEX_LETTERS.map(letter =>
+        el('span', { class: 'index-letter' + (available.has(letter) ? '' : ' is-dim') }, letter)
+      )
+    );
+    container.appendChild(bar);
+    container.appendChild(popover);
+
+    function letterAtY(clientY) {
+      const rect = bar.getBoundingClientRect();
+      const ratio = Math.min(0.999, Math.max(0, (clientY - rect.top) / rect.height));
+      return INDEX_LETTERS[Math.floor(ratio * INDEX_LETTERS.length)];
+    }
+    function nearestAvailable(letter) {
+      if (available.has(letter)) return letter;
+      const idx = INDEX_LETTERS.indexOf(letter);
+      for (let d = 1; d < INDEX_LETTERS.length; d++) {
+        if (idx - d >= 0 && available.has(INDEX_LETTERS[idx - d])) return INDEX_LETTERS[idx - d];
+        if (idx + d < INDEX_LETTERS.length && available.has(INDEX_LETTERS[idx + d])) return INDEX_LETTERS[idx + d];
+      }
+      return null;
+    }
+    function activate(clientY) {
+      const letter = letterAtY(clientY);
+      const target = nearestAvailable(letter);
+      const barRect = bar.getBoundingClientRect();
+      popover.textContent = letter;
+      popover.style.top = Math.min(Math.max(clientY, barRect.top + 28), barRect.bottom - 28) + 'px';
+      popover.classList.add('is-visible');
+      if (target) {
+        const rowEl = listWrap.querySelector(`[data-letter="${target}"]`);
+        if (rowEl) rowEl.scrollIntoView({ block: 'start' });
+      }
+    }
+    function clientYFromEvent(e) {
+      return e.touches && e.touches.length ? e.touches[0].clientY : e.clientY;
+    }
+    function onMove(e) { activate(clientYFromEvent(e)); }
+    function onEnd() {
+      popover.classList.remove('is-visible');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+    }
+    bar.addEventListener('touchstart', onMove, { passive: true });
+    bar.addEventListener('touchmove', (e) => { onMove(e); e.preventDefault(); }, { passive: false });
+    bar.addEventListener('touchend', onEnd);
+    bar.addEventListener('mousedown', (e) => {
+      onMove(e);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onEnd);
+    });
+  }
+
   function songCard(song) {
     const chips = [];
     if (song.key) chips.push(el('span', { class: 'mini-chip mini-chip--key' }, song.key));
@@ -123,6 +190,7 @@ function createSongsTab(container, ctx) {
 
     return el('div', {
       class: 'song-card',
+      'data-letter': groupLetter(song.title),
       onclick: () => openSongForm(song)
     },
       el('div', { class: 'song-card-top' },
