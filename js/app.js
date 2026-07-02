@@ -102,7 +102,9 @@ function boot() {
   appRoot.appendChild(setlistsContainer);
   appRoot.appendChild(tabbar);
 
-  const songsApi = createSongsTab(songsContainer, {});
+  const songsApi = createSongsTab(songsContainer, {
+    refreshSetlists: () => setlistsApi.load()
+  });
   const setlistsApi = createSetlistsTab(setlistsContainer, {
     getSongs: () => songsApi.getSongs(),
     refreshSongs: () => songsApi.load()

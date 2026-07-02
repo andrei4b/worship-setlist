@@ -189,11 +189,7 @@ function createSongsTab(container, ctx) {
       song.pace ? el('span', { class: 'pace-badge' + paceClass }, song.pace) : null
     );
 
-    return el('div', {
-      class: 'song-card',
-      'data-letter': groupLetter(song.title),
-      onclick: () => openSongForm(song)
-    },
+    const cardEl = el('div', { class: 'song-card' },
       el('div', { class: 'song-card-top' },
         el('h3', { class: 'song-card-title' },
           song.link ? el('a', {
@@ -209,6 +205,113 @@ function createSongsTab(container, ctx) {
       ),
       (metaBits.length || song.pace) ? bottomRow : null
     );
+
+    const wrap = el('div', { class: 'song-swipe-wrap', 'data-letter': groupLetter(song.title) },
+      el('div', { class: 'song-swipe-action' },
+        el('span', { class: 'icon' }, '♪+'),
+        'Add to setlist'
+      ),
+      cardEl
+    );
+    attachSwipeToSetlist(cardEl, song);
+    return wrap;
+  }
+
+  // ---- Swipe-right-to-add gesture ----
+  function attachSwipeToSetlist(cardEl, song) {
+    const THRESHOLD = 88;
+    const MAX_REVEAL = 120;
+    let dragging = false, decided = false, isHorizontal = false, swiped = false;
+    let startX = 0, startY = 0, dx = 0;
+
+    function setTransform(x) { cardEl.style.transform = x ? `translateX(${x}px)` : ''; }
+    function settle() {
+      cardEl.classList.add('is-swipe-animating');
+      setTransform(0);
+    }
+    function onStart(clientX, clientY) {
+      dragging = true; decided = false; isHorizontal = false;
+      startX = clientX; startY = clientY; dx = 0;
+      cardEl.classList.remove('is-swipe-animating');
+    }
+    function onMove(clientX, clientY) {
+      if (!dragging) return false;
+      const rawDx = clientX - startX;
+      const rawDy = clientY - startY;
+      if (!decided) {
+        if (Math.abs(rawDx) < 8 && Math.abs(rawDy) < 8) return false;
+        decided = true;
+        isHorizontal = Math.abs(rawDx) > Math.abs(rawDy);
+        if (!isHorizontal) { dragging = false; return false; }
+      }
+      if (!isHorizontal) return false;
+      dx = Math.max(0, Math.min(MAX_REVEAL, rawDx));
+      if (dx > 4) swiped = true;
+      setTransform(dx);
+      return true;
+    }
+    function onEnd() {
+      if (!dragging) return;
+      dragging = false;
+      const commit = dx >= THRESHOLD;
+      settle();
+      if (commit) openAddToSetlistSheet(song);
+    }
+
+    cardEl.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      onStart(t.clientX, t.clientY);
+    }, { passive: true });
+    cardEl.addEventListener('touchmove', (e) => {
+      const t = e.touches[0];
+      if (onMove(t.clientX, t.clientY)) e.preventDefault();
+    }, { passive: false });
+    cardEl.addEventListener('touchend', onEnd);
+    cardEl.addEventListener('touchcancel', onEnd);
+
+    cardEl.addEventListener('mousedown', (e) => {
+      onStart(e.clientX, e.clientY);
+      const onMouseMove = (e2) => onMove(e2.clientX, e2.clientY);
+      const onMouseUp = () => {
+        onEnd();
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    cardEl.addEventListener('click', (e) => {
+      if (swiped) { e.preventDefault(); e.stopPropagation(); swiped = false; return; }
+      openSongForm(song);
+    });
+  }
+
+  // ---- Add to setlist ----
+  async function openAddToSetlistSheet(song) {
+    const setlists = await DB.getSetlists();
+    if (!setlists.length) {
+      toast('No setlists yet — create one in the Setlists tab first', { variant: 'danger' });
+      return;
+    }
+    const listEl = el('div', { class: 'picker-list' },
+      ...setlists.map(sl => el('div', {
+        class: 'picker-row',
+        onclick: async () => {
+          sl.items = sl.items || [];
+          sl.items.push({ type: 'song', songId: song.id });
+          sl.updatedAt = Date.now();
+          await DB.saveSetlist(sl);
+          if (ctx.refreshSetlists) ctx.refreshSetlists();
+          closeSheet();
+          toast(`Added to "${sl.name || 'Untitled setlist'}"`);
+        }
+      },
+        el('div', { class: 'picker-row-title' }, sl.name || 'Untitled setlist'),
+        el('div', { class: 'picker-row-meta' }, `${(sl.items || []).length} item${(sl.items || []).length === 1 ? '' : 's'}`)
+      ))
+    );
+    openSheet(`Add "${song.title}" to a setlist`, listEl, null);
   }
 
   function emptyState(glyph, title, body) {
