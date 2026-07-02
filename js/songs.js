@@ -146,9 +146,10 @@ function createSongsTab(container, ctx) {
     function activate(clientY) {
       const letter = letterAtY(clientY);
       const target = nearestAvailable(letter);
-      const barRect = bar.getBoundingClientRect();
       popover.textContent = letter;
-      popover.style.top = Math.min(Math.max(clientY, barRect.top + 28), barRect.bottom - 28) + 'px';
+      // Offset well above the touch point so a finger doesn't cover the bubble.
+      const popoverY = Math.max(clientY - 80, 40);
+      popover.style.top = popoverY + 'px';
       popover.classList.add('is-visible');
       if (target) {
         const rowEl = listWrap.querySelector(`[data-letter="${target}"]`);

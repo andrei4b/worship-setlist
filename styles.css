@@ -171,7 +171,7 @@ a { color: var(--accent); }
 .index-letter.is-dim { color: var(--ink-faint); opacity: 0.5; }
 .index-popover {
   position: fixed;
-  right: 34px;
+  right: 44px;
   transform: translateY(-50%);
   min-width: 56px;
   height: 56px;
