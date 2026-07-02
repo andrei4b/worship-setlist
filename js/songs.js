@@ -290,22 +290,31 @@ function createSongsTab(container, ctx) {
   // ---- Add to setlist ----
   async function openAddToSetlistSheet(song) {
     const setlists = await DB.getSetlists();
-    if (!setlists.length) {
-      toast('No setlists yet — create one in the Setlists tab first', { variant: 'danger' });
-      return;
+
+    async function addToSetlist(sl) {
+      sl.items = sl.items || [];
+      sl.items.push({ type: 'song', songId: song.id });
+      sl.updatedAt = Date.now();
+      await DB.saveSetlist(sl);
+      if (ctx.refreshSetlists) ctx.refreshSetlists();
+      closeSheet();
+      toast(`Added to "${sl.name || 'Untitled setlist'}"`);
     }
+
+    async function createAndAdd() {
+      const sl = { id: DB.uid(), name: 'New setlist', items: [], createdAt: Date.now(), updatedAt: Date.now() };
+      await addToSetlist(sl);
+    }
+
+    const newRow = el('div', { class: 'picker-row picker-row--new', onclick: createAndAdd },
+      el('div', { class: 'picker-row-title' }, '+ New setlist')
+    );
+
     const listEl = el('div', { class: 'picker-list' },
+      newRow,
       ...setlists.map(sl => el('div', {
         class: 'picker-row',
-        onclick: async () => {
-          sl.items = sl.items || [];
-          sl.items.push({ type: 'song', songId: song.id });
-          sl.updatedAt = Date.now();
-          await DB.saveSetlist(sl);
-          if (ctx.refreshSetlists) ctx.refreshSetlists();
-          closeSheet();
-          toast(`Added to "${sl.name || 'Untitled setlist'}"`);
-        }
+        onclick: () => addToSetlist(sl)
       },
         el('div', { class: 'picker-row-title' }, sl.name || 'Untitled setlist'),
         el('div', { class: 'picker-row-meta' }, `${(sl.items || []).length} item${(sl.items || []).length === 1 ? '' : 's'}`)

@@ -774,6 +774,11 @@ a { color: var(--accent); }
 }
 .picker-row-title { font-weight: 600; font-size: 14.5px; }
 .picker-row-meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.picker-row--new {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+}
+.picker-row--new .picker-row-title { color: var(--accent-press); }
 
 /* ============ Import panel ============ */
 .import-drop {
