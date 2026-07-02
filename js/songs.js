@@ -207,10 +207,7 @@ function createSongsTab(container, ctx) {
     );
 
     const wrap = el('div', { class: 'song-swipe-wrap', 'data-letter': groupLetter(song.title) },
-      el('div', { class: 'song-swipe-action' },
-        el('span', { class: 'icon' }, '♪+'),
-        'Add to setlist'
-      ),
+      el('div', { class: 'song-swipe-action' }, '+ Add'),
       cardEl
     );
     attachSwipeToSetlist(cardEl, song);
