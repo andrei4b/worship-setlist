@@ -316,9 +316,7 @@ function createSongsTab(container, ctx) {
       openSheet('New setlist', body, footer);
     }
 
-    const newRow = el('div', { class: 'picker-row picker-row--new', onclick: openNewSetlistPrompt },
-      el('div', { class: 'picker-row-title' }, '+ New setlist')
-    );
+    const newRow = el('button', { class: 'chip-btn picker-new-btn', onclick: openNewSetlistPrompt }, '+ New setlist');
 
     const listEl = el('div', { class: 'picker-list' },
       newRow,
