@@ -178,10 +178,15 @@ function createSongsTab(container, ctx) {
   function songCard(song) {
     const chips = [];
     if (song.key) chips.push(el('span', { class: 'mini-chip mini-chip--key' }, song.key));
-    if (song.tempo) chips.push(el('span', { class: 'mini-chip mini-chip--tempo' }, song.tempo + (isFinite(parseFloat(song.tempo)) ? ' bpm' : '')));
+    if (song.tempo) chips.push(el('span', { class: 'mini-chip mini-chip--tempo' }, song.tempo));
 
     const metaBits = [];
     if (song.structure) metaBits.push(el('span', null, song.structure));
+
+    const hasBottomRow = metaBits.length > 0;
+    if (song.pace && !hasBottomRow) {
+      chips.push(el('span', { class: 'pace-dot pace-dot--inline pace-dot--' + song.pace.toLowerCase(), title: song.pace }));
+    }
 
     const bottomRow = el('div', { class: 'song-card-bottom' },
       el('div', { class: 'song-card-meta' }, ...metaBits)
@@ -201,8 +206,8 @@ function createSongsTab(container, ctx) {
         ),
         el('div', { class: 'song-card-chips' }, ...chips)
       ),
-      metaBits.length ? bottomRow : null,
-      song.pace ? el('span', { class: 'pace-dot pace-dot--' + song.pace.toLowerCase(), title: song.pace }) : null
+      hasBottomRow ? bottomRow : null,
+      (song.pace && hasBottomRow) ? el('span', { class: 'pace-dot pace-dot--' + song.pace.toLowerCase(), title: song.pace }) : null
     );
 
     const wrap = el('div', { class: 'song-swipe-wrap', 'data-letter': groupLetter(song.title) },

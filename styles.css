@@ -289,7 +289,7 @@ a { color: var(--accent); }
   line-height: 1.25;
   margin: 0;
 }
-.song-card-chips { display: flex; gap: 6px; flex-shrink: 0; }
+.song-card-chips { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .mini-chip {
   font-size: 11.5px;
   font-weight: 700;
@@ -335,6 +335,11 @@ a { color: var(--accent); }
 .pace-dot--slow { background: var(--pace-slow); }
 .pace-dot--medium { background: var(--pace-medium); }
 .pace-dot--fast { background: var(--pace-fast); }
+.pace-dot--inline {
+  position: static;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
 .tag-pill {
   font-size: 11.5px;
   background: var(--paper);
