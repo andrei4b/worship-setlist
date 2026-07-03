@@ -28,10 +28,7 @@ function createSongsTab(container, ctx) {
     let list = songs;
     if (query.trim()) {
       const q = query.trim().toLowerCase();
-      list = list.filter(s =>
-        s.title.toLowerCase().includes(q) ||
-        (s.pace || '').toLowerCase().includes(q)
-      );
+      list = list.filter(s => s.title.toLowerCase().includes(q));
     }
     if (paceFilter) list = list.filter(s => s.pace === paceFilter);
     list = [...list];
@@ -50,7 +47,7 @@ function createSongsTab(container, ctx) {
       el('div', { class: 'searchbar' },
         el('input', {
           type: 'search',
-          placeholder: 'Search title or pace…',
+          placeholder: 'Search title',
           value: query,
           oninput: debounce((e) => { query = e.target.value; renderList(); }, 150)
         })
