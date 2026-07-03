@@ -7,7 +7,7 @@ const SETLIST_SORT_OPTIONS = [
 ];
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch } = UI;
 
   let setlists = [];
   let query = '';
@@ -62,8 +62,8 @@ function createSetlistsTab(container, ctx) {
   function getFiltered() {
     let list = setlists;
     if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      list = list.filter(sl => sl.name.toLowerCase().includes(q));
+      const q = normalizeForSearch(query.trim());
+      list = list.filter(sl => normalizeForSearch(sl.name).includes(q));
     }
     list = [...list];
     switch (sortId) {
@@ -354,7 +354,7 @@ function createSetlistsTab(container, ctx) {
       function renderPicker() {
         clear(listEl);
         const filtered = pq.trim()
-          ? allSongs.filter(s => s.title.toLowerCase().includes(pq.trim().toLowerCase()))
+          ? allSongs.filter(s => normalizeForSearch(s.title).includes(normalizeForSearch(pq.trim())))
           : allSongs;
         if (!filtered.length) {
           listEl.appendChild(el('p', { class: 'field-hint', style: 'padding:14px 0' },
@@ -611,25 +611,17 @@ function createSetlistsTab(container, ctx) {
   }
 
   function openSetlistImportSheet() {
-    const fileInput = el('input', { type: 'file', accept: '.json,application/json' });
-    const drop = el('div', { class: 'import-drop' },
-      el('div', null, '📄'),
-      el('p', { style: 'margin:8px 0 14px' }, 'Choose a setlist bundle JSON file to import.'),
-      el('button', { class: 'btn btn--secondary', onclick: () => fileInput.click() }, 'Choose file'),
-      fileInput
-    );
-    const hint = el('div', { class: 'field-hint', style: 'margin-top:10px' },
-      'Import a bundle exported from this app. Referenced songs are imported automatically. Duplicates (same ID) are skipped.'
-    );
-    const body = el('div', null, drop, hint);
+    const fileInput = el('input', { type: 'file', accept: '.json,application/json', style: 'display:none' });
+    document.body.appendChild(fileInput);
+    fileInput.addEventListener('cancel', () => fileInput.remove());
 
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
+      fileInput.remove();
       if (!file) return;
       try {
         const text = await file.text();
         const result = await importBundle(text);
-        closeSheet(true);
         renderList();
         toast(`Imported ${result.setlists} setlist${result.setlists === 1 ? '' : 's'}` +
           (result.songs ? ` + ${result.songs} song${result.songs === 1 ? '' : 's'}` : ''));
@@ -639,7 +631,7 @@ function createSetlistsTab(container, ctx) {
       }
     });
 
-    openSheet('Import setlists', body, null);
+    fileInput.click();
   }
 
   // ── Detail page 3-dot menu ─────────────────────────────────────────────

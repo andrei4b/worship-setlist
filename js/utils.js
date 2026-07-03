@@ -32,6 +32,17 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
+// ---- Diacritic-insensitive search ----
+// So searching "a" also matches "ă"/"â", "s" matches "ș"/"ş", "t" matches "ț"/"ţ", etc.
+function normalizeForSearch(str) {
+  return String(str ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[șş]/g, 's')
+    .replace(/[țţ]/g, 't');
+}
+
 // ---- Toast ----
 function toast(message, opts = {}) {
   const root = document.getElementById('toast-root');
@@ -177,7 +188,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch };
 window.CSVUtil = { songsToCSV, csvToSongs };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };

@@ -1,7 +1,7 @@
 /* songs.js — Songs tab: list, search, sort, CRUD, import/export */
 (function () {
 
-const { el, clear, escapeHtml, toast, debounce } = UI;
+const { el, clear, escapeHtml, toast, debounce, normalizeForSearch } = UI;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
@@ -27,8 +27,8 @@ function createSongsTab(container, ctx) {
   function getFiltered() {
     let list = songs;
     if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      list = list.filter(s => s.title.toLowerCase().includes(q));
+      const q = normalizeForSearch(query.trim());
+      list = list.filter(s => normalizeForSearch(s.title).includes(q));
     }
     if (paceFilter) list = list.filter(s => s.pace === paceFilter);
     list = [...list];
@@ -429,22 +429,15 @@ function createSongsTab(container, ctx) {
     toast('All songs deleted');
   }
 
-  // ---- Import sheet ----
+  // ---- Import ----
   function openImportSheet() {
-    const fileInput = el('input', { type: 'file', accept: '.json,application/json' });
-    const drop = el('div', { class: 'import-drop' },
-      el('div', null, '📄'),
-      el('p', { style: 'margin:8px 0 14px' }, 'Choose a JSON file to import songs.'),
-      el('button', { class: 'btn btn--secondary', onclick: () => fileInput.click() }, 'Choose file'),
-      fileInput
-    );
-    const hint = el('div', { class: 'field-hint', style: 'margin-top:10px' },
-      'Expected format: JSON exported from this app, or an array of song objects.'
-    );
-    const body = el('div', null, drop, hint);
+    const fileInput = el('input', { type: 'file', accept: '.json,application/json', style: 'display:none' });
+    document.body.appendChild(fileInput);
+    fileInput.addEventListener('cancel', () => fileInput.remove());
 
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
+      fileInput.remove();
       if (!file) return;
       try {
         const text = await file.text();
@@ -452,7 +445,6 @@ function createSongsTab(container, ctx) {
         if (!imported.length) { toast('No songs found in file', { variant: 'danger' }); return; }
         await DB.bulkSaveSongs(imported);
         songs = [...songs, ...imported];
-        closeSheet(true);
         render();
         toast(`Imported ${imported.length} song${imported.length === 1 ? '' : 's'}`);
       } catch (err) {
@@ -461,7 +453,7 @@ function createSongsTab(container, ctx) {
       }
     });
 
-    openSheet('Import songs', body, null);
+    fileInput.click();
   }
 
   function exportSongsJSON() {
