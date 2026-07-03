@@ -14,6 +14,13 @@
   --danger: #B23A3A;
   --danger-soft: #F4DEDE;
 
+  --pace-slow: #2F6B33;
+  --pace-slow-soft: #DCEEDB;
+  --pace-medium: #8A6A0E;
+  --pace-medium-soft: #FBEAC4;
+  --pace-fast: #A23A2E;
+  --pace-fast-soft: #F6D9D6;
+
   --radius-s: 8px;
   --radius-m: 14px;
   --radius-l: 22px;
@@ -137,6 +144,12 @@ a { color: var(--accent); }
   color: var(--paper);
   border-color: var(--ink);
 }
+.chip-btn--pace-slow { background: var(--pace-slow-soft); color: var(--pace-slow); border-color: var(--pace-slow-soft); }
+.chip-btn--pace-medium { background: var(--pace-medium-soft); color: var(--pace-medium); border-color: var(--pace-medium-soft); }
+.chip-btn--pace-fast { background: var(--pace-fast-soft); color: var(--pace-fast); border-color: var(--pace-fast-soft); }
+.chip-btn--pace-slow.is-active { background: var(--pace-slow); color: #fff; border-color: var(--pace-slow); }
+.chip-btn--pace-medium.is-active { background: var(--pace-medium); color: #fff; border-color: var(--pace-medium); }
+.chip-btn--pace-fast.is-active { background: var(--pace-fast); color: #fff; border-color: var(--pace-fast); }
 
 .app-main {
   flex: 1;
@@ -311,19 +324,17 @@ a { color: var(--accent); }
   justify-content: space-between;
   gap: 10px;
 }
-.pace-badge {
-  flex-shrink: 0;
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 3px 9px;
-  border-radius: 999px;
+.pace-dot {
+  position: absolute;
+  bottom: 12px;
+  right: 14px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
 }
-.pace-badge--slow { background: #DCEEDB; color: #2F6B33; }
-.pace-badge--medium { background: #FBEAC4; color: #8A6A0E; }
-.pace-badge--fast { background: #F6D9D6; color: #A23A2E; }
+.pace-dot--slow { background: var(--pace-slow); }
+.pace-dot--medium { background: var(--pace-medium); }
+.pace-dot--fast { background: var(--pace-fast); }
 .tag-pill {
   font-size: 11.5px;
   background: var(--paper);

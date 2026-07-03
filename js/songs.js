@@ -58,7 +58,7 @@ function createSongsTab(container, ctx) {
       el('div', { class: 'sort-row' },
         ...PACE_OPTIONS.map(pace =>
           el('button', {
-            class: 'chip-btn' + (paceFilter === pace ? ' is-active' : ''),
+            class: `chip-btn chip-btn--pace-${pace.toLowerCase()}` + (paceFilter === pace ? ' is-active' : ''),
             onclick: () => { paceFilter = paceFilter === pace ? null : pace; renderList(); updatePaceChips(); }
           }, pace)
         )
@@ -183,10 +183,8 @@ function createSongsTab(container, ctx) {
     const metaBits = [];
     if (song.structure) metaBits.push(el('span', null, song.structure));
 
-    const paceClass = song.pace ? ' pace-badge--' + song.pace.toLowerCase() : '';
     const bottomRow = el('div', { class: 'song-card-bottom' },
-      el('div', { class: 'song-card-meta' }, ...metaBits),
-      song.pace ? el('span', { class: 'pace-badge' + paceClass }, song.pace) : null
+      el('div', { class: 'song-card-meta' }, ...metaBits)
     );
 
     const cardEl = el('div', { class: 'song-card' },
@@ -203,7 +201,8 @@ function createSongsTab(container, ctx) {
         ),
         el('div', { class: 'song-card-chips' }, ...chips)
       ),
-      (metaBits.length || song.pace) ? bottomRow : null
+      metaBits.length ? bottomRow : null,
+      song.pace ? el('span', { class: 'pace-dot pace-dot--' + song.pace.toLowerCase(), title: song.pace }) : null
     );
 
     const wrap = el('div', { class: 'song-swipe-wrap', 'data-letter': groupLetter(song.title) },
