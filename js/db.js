@@ -69,6 +69,10 @@ const Store = {
   async delete(storeName, id) {
     const store = await tx(storeName, 'readwrite');
     await reqToPromise(store.delete(id));
+  },
+  async clear(storeName) {
+    const store = await tx(storeName, 'readwrite');
+    await reqToPromise(store.clear());
   }
 };
 
@@ -83,12 +87,14 @@ const DB = {
   saveSong: (song) => Store.put('songs', song),
   bulkSaveSongs: (songs) => Store.bulkPut('songs', songs),
   deleteSong: (id) => Store.delete('songs', id),
+  clearSongs: () => Store.clear('songs'),
 
   // Setlists
   getSetlists: () => Store.all('setlists'),
   getSetlist: (id) => Store.get('setlists', id),
   saveSetlist: (setlist) => Store.put('setlists', setlist),
   deleteSetlist: (id) => Store.delete('setlists', id),
+  clearSetlists: () => Store.clear('setlists'),
 
   uid
 };

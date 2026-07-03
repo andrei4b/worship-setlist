@@ -416,7 +416,17 @@ function createSongsTab(container, ctx) {
     openActionMenu([
       { icon: '⬇', label: 'Import songs', onClick: openImportSheet },
       { icon: '⬆', label: 'Export all songs', onClick: exportSongsJSON },
+      { icon: '🗑', label: 'Delete all songs', danger: true, onClick: confirmDeleteAllSongs },
     ]);
+  }
+
+  async function confirmDeleteAllSongs() {
+    if (!songs.length) { toast('No songs to delete', { variant: 'danger' }); return; }
+    if (!confirm(`Delete all ${songs.length} song${songs.length === 1 ? '' : 's'}? This can't be undone.`)) return;
+    await DB.clearSongs();
+    songs = [];
+    render();
+    toast('All songs deleted');
   }
 
   // ---- Import sheet ----

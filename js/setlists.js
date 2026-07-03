@@ -197,8 +197,16 @@ function createSetlistsTab(container, ctx) {
     titleInput.addEventListener('blur', commitTitleEdit);
     titleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') titleInput.blur(); });
 
+    async function handleBack() {
+      if (draft.items.length === 0) {
+        await DB.deleteSetlist(draft.id);
+        setlists = setlists.filter(s => s.id !== draft.id);
+      }
+      showList();
+    }
+
     const topBar = el('div', { class: 'detail-topbar' },
-      el('button', { class: 'detail-back-btn', onclick: showList, title: 'Back' },
+      el('button', { class: 'detail-back-btn', onclick: handleBack, title: 'Back' },
         el('span', null, '←')
       ),
       el('div', { class: 'detail-title-wrap' }, titleEl, titleInput),
@@ -582,7 +590,17 @@ function createSetlistsTab(container, ctx) {
     openActionMenu([
       { icon: '⬇', label: 'Import setlists', onClick: openSetlistImportSheet },
       { icon: '⬆', label: 'Export all setlists', onClick: exportAllSetlists },
+      { icon: '🗑', label: 'Delete all setlists', danger: true, onClick: confirmDeleteAllSetlists },
     ]);
+  }
+
+  async function confirmDeleteAllSetlists() {
+    if (!setlists.length) { toast('No setlists to delete', { variant: 'danger' }); return; }
+    if (!confirm(`Delete all ${setlists.length} setlist${setlists.length === 1 ? '' : 's'}? This can't be undone.`)) return;
+    await DB.clearSetlists();
+    setlists = [];
+    renderList();
+    toast('All setlists deleted');
   }
 
   function exportAllSetlists() {
