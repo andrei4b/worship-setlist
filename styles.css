@@ -162,6 +162,7 @@ a { color: var(--accent); }
 .app-main {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior-y: none;
   padding: 4px 30px calc(96px + var(--safe-bottom)) 20px;
 }
 
