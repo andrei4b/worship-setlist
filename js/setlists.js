@@ -251,13 +251,16 @@ function createSetlistsTab(container, ctx) {
         const effectiveKey = item.keyOverride || (song ? song.key : '');
         const effectiveTempo = song ? song.tempo : '';
 
-        const titleBits = [el('span', { class: 'setlist-item-title' }, title)];
+        const metaBits = [];
         if (effectiveKey) {
-          titleBits.push(el('span', {
+          metaBits.push(el('span', {
             class: 'setlist-item-inline-meta' + (item.keyOverride ? ' is-overridden' : '')
           }, effectiveKey));
         }
-        if (effectiveTempo) titleBits.push(el('span', { class: 'setlist-item-inline-meta' }, effectiveTempo));
+        if (effectiveTempo) metaBits.push(el('span', { class: 'setlist-item-inline-meta' }, effectiveTempo));
+
+        const titleBits = [el('span', { class: 'setlist-item-title' }, title)];
+        if (metaBits.length) titleBits.push(el('div', { class: 'setlist-item-meta-group' }, ...metaBits));
         titleLine = el('div', { class: 'setlist-item-titleline' }, ...titleBits);
 
         if (item.notes) {
