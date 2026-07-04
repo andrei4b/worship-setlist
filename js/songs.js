@@ -151,7 +151,15 @@ function createSongsTab(container, ctx) {
       popover.classList.add('is-visible');
       if (target) {
         const rowEl = listWrap.querySelector(`[data-letter="${target}"]`);
-        if (rowEl) rowEl.scrollIntoView({ block: 'start' });
+        if (rowEl) {
+          // The page (not .app-main) is what actually scrolls, and the sticky
+          // header overlays the top of it, so scrollIntoView alone would land
+          // the row underneath the header instead of just below it.
+          const header = document.querySelector('.app-header');
+          const headerHeight = header ? header.getBoundingClientRect().height : 0;
+          const rowTop = rowEl.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo({ top: Math.max(0, rowTop - headerHeight - 8), behavior: 'auto' });
+        }
       }
     }
     function clientYFromEvent(e) {
