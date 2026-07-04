@@ -527,10 +527,10 @@ function createSetlistsTab(container, ctx) {
   // ── Clipboard export ───────────────────────────────────────────────────
   async function copySetlistText(setlist) {
     const lines = (setlist.items || []).map(item => {
-      if (item.type === 'text') return item.text;
+      if (item.type === 'text') return `--${item.text}`;
       const song = getSongById(item.songId);
       if (!song) return '(song removed)';
-      return `${song.title} - ${item.keyOverride || song.key || '—'} - ${song.tempo || '—'}`;
+      return `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
     });
     const text = (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
     const ok = await FileUtil.copyToClipboard(text);
