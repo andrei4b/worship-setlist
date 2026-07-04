@@ -1,6 +1,6 @@
-/* service-worker.js — cache-first offline support */
+/* service-worker.js — offline support (network-first for our own code) */
 
-const CACHE_NAME = 'worship-planner-v3';
+const CACHE_NAME = 'worship-planner-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -36,19 +36,29 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
 
-  // Network-first for navigation, fallback to cache (so updates are picked up when online)
-  if (request.mode === 'navigate') {
+  const isSameOrigin = new URL(request.url).origin === self.location.origin;
+
+  // Network-first for navigation and our own app code (js/css/html/manifest),
+  // falling back to cache when offline. A stale cache-first strategy here is
+  // what caused past fixes to not reach installed devices until the service
+  // worker script itself changed — this way, updates land on the very next
+  // online visit instead of being stuck behind a version bump.
+  if (request.mode === 'navigate' || isSameOrigin) {
     event.respondWith(
-      fetch(request).then(res => {
+      // cache: 'no-store' bypasses the browser's own HTTP cache, not just
+      // ours — without it, "network-first" could still serve a stale
+      // response the browser cached on a prior visit.
+      fetch(request, { cache: 'no-store' }).then(res => {
         const copy = res.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         return res;
-      }).catch(() => caches.match(request).then(r => r || caches.match('./index.html')))
+      }).catch(() => caches.match(request).then(r => r || (request.mode === 'navigate' ? caches.match('./index.html') : undefined)))
     );
     return;
   }
 
-  // Cache-first for everything else (app shell, fonts, etc.)
+  // Cache-first for cross-origin assets (Google Fonts, etc.) — immutable
+  // once fetched, so there's no freshness to chase and caching saves a round trip.
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
