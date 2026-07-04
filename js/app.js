@@ -120,7 +120,14 @@ function openActionMenu(items) {
   const body = $el('div', { class: 'menu-list' },
     ...items.map(item => $el('button', {
       class: 'menu-item' + (item.danger ? ' is-danger' : ''),
-      onclick: () => { closeSheet(); item.onClick(); }
+      onclick: () => {
+        closeSheet();
+        // Let the close (and its history.back()) fully settle before
+        // running the action — doing it synchronously races an in-flight
+        // back() against anything the action pushes (e.g. a follow-up
+        // sheet), corrupting the history stack.
+        setTimeout(() => item.onClick(), 220);
+      }
     },
       $el('span', { class: 'icon' }, item.icon || ''),
       item.label
