@@ -8,7 +8,7 @@ const DAY_CHIP_OPTIONS = [
 ];
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, parseDateInput } = UI;
 
   let setlists = [];
   let query = '';
@@ -80,15 +80,19 @@ function createSetlistsTab(container, ctx) {
     return list;
   }
 
+  // Setlists saved before the date field existed fall back to their
+  // last-modified time, so sorting/filtering/display all keep working.
+  function getSetlistDate(sl) {
+    return sl.date ? parseDateInput(sl.date) : new Date(sl.updatedAt || sl.createdAt || Date.now());
+  }
+
   function setlistSortKey(sl) {
-    if (sl.date) return parseDateInput(sl.date).getTime();
-    return sl.updatedAt || sl.createdAt || 0;
+    return getSetlistDate(sl).getTime();
   }
 
   // Sunday/Tuesday get their own chip; every other weekday falls under "Alte zile".
   function dayChipForSetlist(sl) {
-    const date = sl.date ? parseDateInput(sl.date) : new Date(sl.updatedAt || sl.createdAt || Date.now());
-    const day = date.getDay();
+    const day = getSetlistDate(sl).getDay();
     if (day === 0) return 'sunday';
     if (day === 2) return 'tuesday';
     return 'other';
@@ -156,26 +160,28 @@ function createSetlistsTab(container, ctx) {
   }
 
   function setlistCard(sl) {
-    const items = sl.items || [];
-    const songCount = items.filter(i => i.type === 'song').length;
+    const weekday = weekdayNameFromJSDate(getSetlistDate(sl));
+    const sub = sl.band ? `${weekday} · ${sl.band}` : weekday;
     return el('div', { class: 'setlist-card', onclick: () => showDetail(sl) },
       el('h3', { class: 'setlist-card-title' }, sl.name || 'Untitled setlist'),
-      el('div', { class: 'setlist-card-sub' }, `${songCount} song${songCount === 1 ? '' : 's'}`)
+      el('div', { class: 'setlist-card-sub' }, sub)
     );
   }
 
   // Shared date+name sheet for both creating and editing a setlist. Both
   // fields are mandatory — onSubmit only fires once each has a value.
-  function openSetlistFormSheet({ title, dateValue, nameValue, submitLabel, onSubmit }) {
+  function openSetlistFormSheet({ title, dateValue, nameValue, bandValue, submitLabel, onSubmit }) {
     const dateInput = el('input', {
       type: 'date',
       value: dateValue,
       onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value); }
     });
     const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: nameValue });
+    const bandInput = el('input', { type: 'text', placeholder: 'e.g. Youth Band', value: bandValue || '' });
     const body = el('div', null,
       formField('Date', dateInput),
-      formField('Setlist name', nameInput)
+      formField('Setlist name', nameInput),
+      formField('Band name', bandInput, 'Optional')
     );
     const footer = el('div', { class: 'sheet-footer' },
       el('button', {
@@ -183,9 +189,10 @@ function createSetlistsTab(container, ctx) {
         onclick: () => {
           const date = dateInput.value;
           const name = nameInput.value.trim();
+          const band = bandInput.value.trim();
           if (!date) { toast('Date is required', { variant: 'danger' }); return; }
           if (!name) { toast('Setlist name is required', { variant: 'danger' }); return; }
-          onSubmit({ date, name });
+          onSubmit({ date, name, band });
         }
       }, submitLabel)
     );
@@ -199,8 +206,8 @@ function createSetlistsTab(container, ctx) {
       dateValue: todayStr,
       nameValue: setlistNameFromDate(todayStr),
       submitLabel: 'Create',
-      onSubmit: async ({ date, name }) => {
-        const sl = { id: DB.uid(), name, date, items: [], createdAt: Date.now(), updatedAt: Date.now() };
+      onSubmit: async ({ date, name, band }) => {
+        const sl = { id: DB.uid(), name, date, band, items: [], createdAt: Date.now(), updatedAt: Date.now() };
         await DB.saveSetlist(sl);
         setlists.push(sl);
         closeSheet(true, true);
@@ -232,10 +239,12 @@ function createSetlistsTab(container, ctx) {
         title: 'Edit setlist',
         dateValue: draft.date || FileUtil.dateStamp(),
         nameValue: draft.name || '',
+        bandValue: draft.band || '',
         submitLabel: 'Save',
-        onSubmit: async ({ date, name }) => {
+        onSubmit: async ({ date, name, band }) => {
           draft.date = date;
           draft.name = name;
+          draft.band = band;
           titleEl.textContent = draft.name;
           closeSheet();
           await autoSave(draft);

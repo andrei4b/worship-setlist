@@ -320,9 +320,11 @@ function createSongsTab(container, ctx) {
         onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value || todayStr); }
       });
       const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: setlistNameFromDate(todayStr) });
+      const bandInput = el('input', { type: 'text', placeholder: 'e.g. Youth Band' });
       const body = el('div', null,
         formField('Date', dateInput),
-        formField('Setlist name', nameInput)
+        formField('Setlist name', nameInput),
+        formField('Band name', bandInput, 'Optional')
       );
       const footer = el('div', { class: 'sheet-footer' },
         el('button', {
@@ -330,9 +332,10 @@ function createSongsTab(container, ctx) {
           onclick: () => {
             const date = dateInput.value;
             const name = nameInput.value.trim();
+            const band = bandInput.value.trim();
             if (!date) { toast('Date is required', { variant: 'danger' }); return; }
             if (!name) { toast('Setlist name is required', { variant: 'danger' }); return; }
-            addToSetlist({ id: DB.uid(), name, date, items: [], createdAt: Date.now(), updatedAt: Date.now() });
+            addToSetlist({ id: DB.uid(), name, date, band, items: [], createdAt: Date.now(), updatedAt: Date.now() });
           }
         }, 'Create & Add')
       );

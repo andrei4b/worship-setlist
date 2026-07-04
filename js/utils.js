@@ -113,9 +113,16 @@ function parseDateInput(dateInputValue) {
 
 function setlistNameFromDate(dateInputValue) {
   const date = parseDateInput(dateInputValue);
+  return `${date.getDate()} ${RO_MONTHS[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
+}
+
+function weekdayNameFromJSDate(date) {
   const day = RO_DAYS[date.getDay()];
-  const dayCap = day.charAt(0).toUpperCase() + day.slice(1);
-  return `${dayCap}, ${date.getDate()} ${RO_MONTHS[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
+  return day.charAt(0).toUpperCase() + day.slice(1);
+}
+
+function weekdayNameFromDate(dateInputValue) {
+  return weekdayNameFromJSDate(parseDateInput(dateInputValue));
 }
 
 function downloadFile(filename, content, mime) {
@@ -145,7 +152,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, parseDateInput };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 
