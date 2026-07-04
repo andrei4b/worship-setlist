@@ -6,6 +6,12 @@ const { el: $el, clear: $clear } = UI;
 // ---- Shared sheet/modal manager (supports stacking) ----
 const _sheetStack = [];
 
+// One page-level "back" action (e.g. a tab's own detail view) can be
+// registered at a time; the phone's back button/gesture closes sheets
+// first (one at a time), and only runs this once no sheet is open.
+let _pageBackHandler = null;
+function setPageBackHandler(fn) { _pageBackHandler = fn; }
+
 function openSheet(title, bodyEl, footerEl) {
   // Dim/hide the previous sheet (if any) instead of destroying it, so it
   // survives underneath and we can return to it when this one closes.
@@ -32,18 +38,21 @@ function openSheet(title, bodyEl, footerEl) {
   requestAnimationFrame(() => backdrop.classList.add('is-open'));
 
   _sheetStack.push(backdrop);
+  history.pushState({ sheet: true }, '');
   return backdrop;
 }
 
-function closeSheet(closeAll) {
+function closeSheet(closeAll, _fromPopstate) {
   if (!_sheetStack.length) return;
 
   if (closeAll === true) {
+    const count = _sheetStack.length;
     while (_sheetStack.length) {
       const b = _sheetStack.pop();
       b.remove();
     }
     document.body.style.overflow = '';
+    if (!_fromPopstate) for (let i = 0; i < count; i++) history.back();
     return;
   }
 
@@ -57,7 +66,22 @@ function closeSheet(closeAll) {
   } else {
     document.body.style.overflow = '';
   }
+  if (!_fromPopstate) history.back();
 }
+
+// Phone back button/gesture: close the topmost sheet first, one per press;
+// only once no sheet is open does the active tab's own page handler run.
+window.addEventListener('popstate', () => {
+  if (_sheetStack.length) {
+    closeSheet(false, true);
+    return;
+  }
+  if (_pageBackHandler) {
+    const handler = _pageBackHandler;
+    _pageBackHandler = null;
+    handler();
+  }
+});
 
 // Action menu (e.g. for setlist item options) — small bottom sheet of buttons
 function openActionMenu(items) {
@@ -76,6 +100,7 @@ function openActionMenu(items) {
 window.openSheet = openSheet;
 window.closeSheet = closeSheet;
 window.openActionMenu = openActionMenu;
+window.setPageBackHandler = setPageBackHandler;
 
 // ---- Tab bar icons (inline SVG, no deps) ----
 const ICONS = {
