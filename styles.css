@@ -674,7 +674,7 @@ a { color: var(--accent); }
   box-shadow: var(--shadow-pop);
   border-radius: var(--radius-s);
   padding: 7px 8px;
-  background: var(--paper-raised);
+  background: var(--paper);
   opacity: 0.95;
 }
 .drag-placeholder {
