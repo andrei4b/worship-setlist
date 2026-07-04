@@ -216,22 +216,32 @@ function createSongsTab(container, ctx) {
       (song.pace && hasBottomRow) ? el('span', { class: 'pace-dot pace-dot--' + song.pace.toLowerCase(), title: song.pace }) : null
     );
 
+    const actionEl = el('div', { class: 'song-swipe-action' }, '+ Add');
     const wrap = el('div', { class: 'song-swipe-wrap', 'data-letter': groupLetter(song.title) },
-      el('div', { class: 'song-swipe-action' }, '+ Add'),
+      actionEl,
       cardEl
     );
-    attachSwipeToSetlist(cardEl, song);
+    attachSwipeGestures(cardEl, actionEl, song);
     return wrap;
   }
 
-  // ---- Swipe-right-to-add gesture ----
-  function attachSwipeToSetlist(cardEl, song) {
+  // ---- Swipe right = add to setlist, swipe left = edit ----
+  function attachSwipeGestures(cardEl, actionEl, song) {
     const THRESHOLD = 88;
     const MAX_REVEAL = 120;
     let dragging = false, decided = false, isHorizontal = false, swiped = false;
     let startX = 0, startY = 0, dx = 0;
 
     function setTransform(x) { cardEl.style.transform = x ? `translateX(${x}px)` : ''; }
+    function updateAction(x) {
+      if (x > 0) {
+        actionEl.textContent = '+ Add';
+        actionEl.classList.remove('is-edit');
+      } else if (x < 0) {
+        actionEl.textContent = '✎ Edit';
+        actionEl.classList.add('is-edit');
+      }
+    }
     function settle() {
       cardEl.classList.add('is-swipe-animating');
       setTransform(0);
@@ -252,17 +262,20 @@ function createSongsTab(container, ctx) {
         if (!isHorizontal) { dragging = false; return false; }
       }
       if (!isHorizontal) return false;
-      dx = Math.max(0, Math.min(MAX_REVEAL, rawDx));
-      if (dx > 4) swiped = true;
+      dx = Math.max(-MAX_REVEAL, Math.min(MAX_REVEAL, rawDx));
+      if (Math.abs(dx) > 4) swiped = true;
+      updateAction(dx);
       setTransform(dx);
       return true;
     }
     function onEnd() {
       if (!dragging) return;
       dragging = false;
-      const commit = dx >= THRESHOLD;
+      const commitAdd = dx >= THRESHOLD;
+      const commitEdit = dx <= -THRESHOLD;
       settle();
-      if (commit) openAddToSetlistSheet(song);
+      if (commitAdd) openAddToSetlistSheet(song);
+      else if (commitEdit) openSongForm(song);
     }
 
     cardEl.addEventListener('touchstart', (e) => {
@@ -289,8 +302,7 @@ function createSongsTab(container, ctx) {
     });
 
     cardEl.addEventListener('click', (e) => {
-      if (swiped) { e.preventDefault(); e.stopPropagation(); swiped = false; return; }
-      openSongForm(song);
+      if (swiped) { e.preventDefault(); e.stopPropagation(); swiped = false; }
     });
   }
 
