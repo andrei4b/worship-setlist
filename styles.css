@@ -118,6 +118,7 @@ a { color: var(--accent); }
 
 .sort-row {
   display: flex;
+  align-items: center;
   gap: 6px;
   margin-top: 10px;
   overflow-x: auto;
@@ -125,6 +126,13 @@ a { color: var(--accent); }
   scrollbar-width: none;
 }
 .sort-row::-webkit-scrollbar { display: none; }
+.song-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-left: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
 .chip-btn {
   flex-shrink: 0;
   border: 1px solid var(--line);

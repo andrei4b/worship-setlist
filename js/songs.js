@@ -58,7 +58,8 @@ function createSongsTab(container, ctx) {
             class: `chip-btn chip-btn--pace-${pace.toLowerCase()}` + (paceFilter === pace ? ' is-active' : ''),
             onclick: () => { paceFilter = paceFilter === pace ? null : pace; renderList(); updatePaceChips(); }
           }, pace)
-        )
+        ),
+        el('span', { class: 'song-count' }, `${songs.length} song${songs.length === 1 ? '' : 's'}`)
       )
     );
     root.appendChild(header);
