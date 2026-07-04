@@ -146,7 +146,6 @@ function createSetlistsTab(container, ctx) {
 
     // Working copy
     const draft = { ...setlist, items: (setlist.items || []).map(i => ({ ...i })) };
-    let activeIdx = null;
 
     // ---- Top bar ----
     const titleEl = el('span', { class: 'detail-title-text' }, draft.name || 'Untitled setlist');
@@ -274,26 +273,94 @@ function createSetlistsTab(container, ctx) {
         ? el('div', { class: 'setlist-item-body' }, titleLine, subLine)
         : el('div', { class: 'setlist-item-body' }, titleLine);
 
+      const swipeAction = el('div', { class: 'setlist-item-swipe-action' });
+      const swipeWrap = el('div', { class: 'setlist-item-swipe-wrap' }, swipeAction, body);
+
       const row = el('div', { class: 'drag-item', 'data-idx': String(idx) },
         el('div', { class: 'drag-handle', title: 'Drag to reorder' },
           el('span', { class: 'drag-dots' }, '⠿')
         ),
-        body,
-        el('div', { class: 'setlist-item-actions' },
-          el('button', { class: 'icon-btn', title: 'Edit', onclick: (e) => { e.stopPropagation(); editItem(idx); } }, '✎'),
-          el('button', { class: 'icon-btn is-danger', title: 'Remove', onclick: (e) => { e.stopPropagation(); removeItem(idx); } }, '✕')
-        )
+        swipeWrap
       );
-      if (idx === activeIdx) row.classList.add('is-active');
-      row.addEventListener('click', () => setActiveIdx(idx));
+      attachItemSwipeGestures(body, swipeAction, idx);
       return row;
     }
 
-    function setActiveIdx(idx) {
-      const next = activeIdx === idx ? null : idx;
-      activeIdx = next;
-      itemsWrap.querySelectorAll('.drag-item').forEach(row => {
-        row.classList.toggle('is-active', parseInt(row.getAttribute('data-idx'), 10) === next);
+    // ---- Swipe right = delete, swipe left = edit ----
+    function attachItemSwipeGestures(bodyEl, actionEl, idx) {
+      const THRESHOLD = 88;
+      const MAX_REVEAL = 120;
+      let dragging = false, decided = false, isHorizontal = false;
+      let startX = 0, startY = 0, dx = 0;
+
+      function setTransform(x) { bodyEl.style.transform = x ? `translateX(${x}px)` : ''; }
+      function updateAction(x) {
+        if (x > 0) {
+          actionEl.textContent = '✕ Delete';
+          actionEl.classList.add('is-delete');
+          actionEl.classList.remove('is-edit');
+        } else if (x < 0) {
+          actionEl.textContent = '✎ Edit';
+          actionEl.classList.add('is-edit');
+          actionEl.classList.remove('is-delete');
+        }
+      }
+      function settle() {
+        bodyEl.classList.add('is-swipe-animating');
+        setTransform(0);
+      }
+      function onStart(clientX, clientY) {
+        dragging = true; decided = false; isHorizontal = false;
+        startX = clientX; startY = clientY; dx = 0;
+        bodyEl.classList.remove('is-swipe-animating');
+      }
+      function onMove(clientX, clientY) {
+        if (!dragging) return false;
+        const rawDx = clientX - startX;
+        const rawDy = clientY - startY;
+        if (!decided) {
+          if (Math.abs(rawDx) < 8 && Math.abs(rawDy) < 8) return false;
+          decided = true;
+          isHorizontal = Math.abs(rawDx) > Math.abs(rawDy);
+          if (!isHorizontal) { dragging = false; return false; }
+        }
+        if (!isHorizontal) return false;
+        dx = Math.max(-MAX_REVEAL, Math.min(MAX_REVEAL, rawDx));
+        updateAction(dx);
+        setTransform(dx);
+        return true;
+      }
+      function onEnd() {
+        if (!dragging) return;
+        dragging = false;
+        const commitDelete = dx >= THRESHOLD;
+        const commitEdit = dx <= -THRESHOLD;
+        settle();
+        if (commitDelete) removeItem(idx);
+        else if (commitEdit) editItem(idx);
+      }
+
+      bodyEl.addEventListener('touchstart', (e) => {
+        const t = e.touches[0];
+        onStart(t.clientX, t.clientY);
+      }, { passive: true });
+      bodyEl.addEventListener('touchmove', (e) => {
+        const t = e.touches[0];
+        if (onMove(t.clientX, t.clientY)) e.preventDefault();
+      }, { passive: false });
+      bodyEl.addEventListener('touchend', onEnd);
+      bodyEl.addEventListener('touchcancel', onEnd);
+
+      bodyEl.addEventListener('mousedown', (e) => {
+        onStart(e.clientX, e.clientY);
+        const onMouseMove = (e2) => onMove(e2.clientX, e2.clientY);
+        const onMouseUp = () => {
+          onEnd();
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
       });
     }
 
@@ -645,7 +712,7 @@ function createSetlistsTab(container, ctx) {
     await DB.deleteSetlist(draft.id);
     setlists = setlists.filter(s => s.id !== draft.id);
     window.setPageBackHandler(null);
-    history.back();
+    window.silentHistoryBack();
     showList();
     toast('Setlist deleted');
   }

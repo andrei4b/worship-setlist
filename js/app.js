@@ -42,6 +42,18 @@ function openSheet(title, bodyEl, footerEl) {
   return backdrop;
 }
 
+// When we close a sheet (or a page) ourselves and just need to consume the
+// history entry it pushed, the resulting popstate must be a no-op — the UI
+// is already correct. This counter tells the popstate listener how many
+// upcoming events to swallow silently, as opposed to a genuine back-button
+// press (which still needs to run the real close/back logic).
+let _skipNextPopstates = 0;
+function silentHistoryBack(steps) {
+  const n = steps || 1;
+  _skipNextPopstates++;
+  if (n > 1) history.go(-n); else history.back();
+}
+
 function closeSheet(closeAll, _fromPopstate) {
   if (!_sheetStack.length) return;
 
@@ -52,7 +64,7 @@ function closeSheet(closeAll, _fromPopstate) {
       b.remove();
     }
     document.body.style.overflow = '';
-    if (!_fromPopstate) for (let i = 0; i < count; i++) history.back();
+    if (!_fromPopstate) silentHistoryBack(count);
     return;
   }
 
@@ -66,12 +78,16 @@ function closeSheet(closeAll, _fromPopstate) {
   } else {
     document.body.style.overflow = '';
   }
-  if (!_fromPopstate) history.back();
+  if (!_fromPopstate) silentHistoryBack();
 }
 
 // Phone back button/gesture: close the topmost sheet first, one per press;
 // only once no sheet is open does the active tab's own page handler run.
 window.addEventListener('popstate', () => {
+  if (_skipNextPopstates > 0) {
+    _skipNextPopstates--;
+    return;
+  }
   if (_sheetStack.length) {
     closeSheet(false, true);
     return;
@@ -101,6 +117,7 @@ window.openSheet = openSheet;
 window.closeSheet = closeSheet;
 window.openActionMenu = openActionMenu;
 window.setPageBackHandler = setPageBackHandler;
+window.silentHistoryBack = silentHistoryBack;
 
 // ---- Tab bar icons (inline SVG, no deps) ----
 const ICONS = {
