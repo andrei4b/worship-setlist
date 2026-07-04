@@ -179,6 +179,9 @@ function createSetlistsTab(container, ctx) {
       if (draft.items.length === 0) {
         await DB.deleteSetlist(draft.id);
         setlists = setlists.filter(s => s.id !== draft.id);
+        showList();
+        toast('Empty setlist discarded');
+        return;
       }
       showList();
     }
