@@ -185,11 +185,9 @@ function createSongsTab(container, ctx) {
     const chips = [];
     if (song.key) chips.push(el('span', { class: 'mini-chip mini-chip--key' }, song.key));
     if (song.tempo) chips.push(el('span', { class: 'mini-chip mini-chip--tempo' }, song.tempo));
-    if (song.pace) {
-      chips.push(el('span', { class: 'pace-dot pace-dot--inline pace-dot--' + song.pace.toLowerCase(), title: song.pace }));
-    }
 
-    const cardEl = el('div', { class: 'song-card' },
+    const cardClass = 'song-card' + (song.pace ? ' song-card--pace-' + song.pace.toLowerCase() : '');
+    const cardEl = el('div', { class: cardClass, title: song.pace || undefined },
       el('div', { class: 'song-card-top' },
         el('h3', { class: 'song-card-title' },
           song.link ? el('a', {

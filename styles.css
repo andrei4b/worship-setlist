@@ -324,18 +324,18 @@ a { color: var(--accent); }
 }
 .song-card-title-link:active { color: var(--accent); }
 
-.pace-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
+/* Pace is shown as a colored accent on the card's left edge, overlaid
+   inside the existing padding rather than adding its own width. */
+.song-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: var(--radius-m) 0 0 var(--radius-m);
 }
-.pace-dot--slow { background: var(--pace-slow-soft); }
-.pace-dot--medium { background: var(--pace-medium-soft); }
-.pace-dot--fast { background: var(--pace-fast-soft); }
-.pace-dot--inline {
-  flex-shrink: 0;
-  margin-left: 2px;
-}
+.song-card--pace-slow::before { background: var(--pace-slow-soft); }
+.song-card--pace-medium::before { background: var(--pace-medium-soft); }
+.song-card--pace-fast::before { background: var(--pace-fast-soft); }
 .tag-pill {
   font-size: 11.5px;
   background: var(--paper);
