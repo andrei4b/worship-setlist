@@ -1,11 +1,18 @@
 /* setlists.js — Setlists tab: list + full detail page with drag reorder, auto-save */
 (function () {
 
+const DAY_CHIP_OPTIONS = [
+  { key: 'sunday', label: 'Duminică' },
+  { key: 'tuesday', label: 'Marți' },
+  { key: 'other', label: 'Alte zile' }
+];
+
 function createSetlistsTab(container, ctx) {
   const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput } = UI;
 
   let setlists = [];
   let query = '';
+  let dayFilter = null;
 
   // Two child views inside container: list and detail
   const listView  = el('div', { class: 'page-view' });
@@ -67,6 +74,7 @@ function createSetlistsTab(container, ctx) {
       const q = normalizeForSearch(query.trim());
       list = list.filter(sl => normalizeForSearch(sl.name).includes(q));
     }
+    if (dayFilter) list = list.filter(sl => dayChipForSetlist(sl) === dayFilter);
     list = [...list];
     list.sort((a, b) => setlistSortKey(b) - setlistSortKey(a));
     return list;
@@ -75,6 +83,15 @@ function createSetlistsTab(container, ctx) {
   function setlistSortKey(sl) {
     if (sl.date) return parseDateInput(sl.date).getTime();
     return sl.updatedAt || sl.createdAt || 0;
+  }
+
+  // Sunday/Tuesday get their own chip; every other weekday falls under "Alte zile".
+  function dayChipForSetlist(sl) {
+    const date = sl.date ? parseDateInput(sl.date) : new Date(sl.updatedAt || sl.createdAt || Date.now());
+    const day = date.getDay();
+    if (day === 0) return 'sunday';
+    if (day === 2) return 'tuesday';
+    return 'other';
   }
 
   function renderList() {
@@ -92,6 +109,14 @@ function createSetlistsTab(container, ctx) {
           value: query,
           oninput: debounce((e) => { query = e.target.value; renderListItems(); }, 150)
         })
+      ),
+      el('div', { class: 'sort-row' },
+        ...DAY_CHIP_OPTIONS.map(opt =>
+          el('button', {
+            class: 'chip-btn' + (dayFilter === opt.key ? ' is-active' : ''),
+            onclick: () => { dayFilter = dayFilter === opt.key ? null : opt.key; renderListItems(); updateDayChips(); }
+          }, opt.label)
+        )
       )
     );
     listView.appendChild(header);
@@ -107,6 +132,11 @@ function createSetlistsTab(container, ctx) {
     );
 
     function renderListItems() { renderListItemsInto(listWrap); }
+    function updateDayChips() {
+      header.querySelectorAll('.chip-btn').forEach((btn, i) => {
+        btn.classList.toggle('is-active', DAY_CHIP_OPTIONS[i].key === dayFilter);
+      });
+    }
   }
 
   function renderListItemsInto(wrap) {
