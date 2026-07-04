@@ -345,9 +345,9 @@ a { color: var(--accent); }
   height: 9px;
   border-radius: 50%;
 }
-.pace-dot--slow { background: var(--pace-slow); }
-.pace-dot--medium { background: var(--pace-medium); }
-.pace-dot--fast { background: var(--pace-fast); }
+.pace-dot--slow { background: var(--pace-slow-soft); }
+.pace-dot--medium { background: var(--pace-medium-soft); }
+.pace-dot--fast { background: var(--pace-fast-soft); }
 .pace-dot--inline {
   position: static;
   flex-shrink: 0;
