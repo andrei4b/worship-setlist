@@ -2,7 +2,7 @@
 (function () {
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate } = UI;
 
   let setlists = [];
   let query = '';
@@ -125,11 +125,32 @@ function createSetlistsTab(container, ctx) {
     );
   }
 
-  async function createNewSetlist() {
-    const sl = { id: DB.uid(), name: 'New setlist', items: [], createdAt: Date.now(), updatedAt: Date.now() };
-    await DB.saveSetlist(sl);
-    setlists.push(sl);
-    showDetail(sl);
+  function createNewSetlist() {
+    const todayStr = FileUtil.dateStamp();
+    const dateInput = el('input', {
+      type: 'date',
+      value: todayStr,
+      onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value || todayStr); }
+    });
+    const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: setlistNameFromDate(todayStr) });
+    const body = el('div', null,
+      formField('Date', dateInput),
+      formField('Setlist name', nameInput)
+    );
+    const footer = el('div', { class: 'sheet-footer' },
+      el('button', {
+        class: 'btn btn--primary btn--block',
+        onclick: async () => {
+          const name = nameInput.value.trim() || 'New setlist';
+          const sl = { id: DB.uid(), name, items: [], createdAt: Date.now(), updatedAt: Date.now() };
+          await DB.saveSetlist(sl);
+          setlists.push(sl);
+          closeSheet(true);
+          showDetail(sl);
+        }
+      }, 'Create')
+    );
+    openSheet('New setlist', body, footer);
   }
 
   function emptyState(glyph, title, body) {

@@ -489,6 +489,7 @@ a { color: var(--accent); }
   margin-bottom: 6px;
 }
 .field input[type="text"], .field input[type="url"], .field input[type="number"],
+.field input[type="date"],
 .field textarea, .field select {
   width: 100%;
   border: 1px solid var(--line);

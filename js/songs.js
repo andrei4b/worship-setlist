@@ -1,7 +1,7 @@
 /* songs.js — Songs tab: list, search, sort, CRUD, import/export */
 (function () {
 
-const { el, clear, escapeHtml, toast, debounce, normalizeForSearch } = UI;
+const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate } = UI;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
@@ -321,8 +321,17 @@ function createSongsTab(container, ctx) {
     }
 
     function openNewSetlistPrompt() {
-      const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning' });
-      const body = el('div', null, formField('Setlist name', nameInput));
+      const todayStr = FileUtil.dateStamp();
+      const dateInput = el('input', {
+        type: 'date',
+        value: todayStr,
+        onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value || todayStr); }
+      });
+      const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: setlistNameFromDate(todayStr) });
+      const body = el('div', null,
+        formField('Date', dateInput),
+        formField('Setlist name', nameInput)
+      );
       const footer = el('div', { class: 'sheet-footer' },
         el('button', {
           class: 'btn btn--primary btn--block',

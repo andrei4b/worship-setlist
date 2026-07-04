@@ -99,6 +99,16 @@ function dateStamp() {
   return `${y}-${m}-${day}`;
 }
 
+// ---- Setlist naming from a date (Romanian month names) ----
+const RO_MONTHS = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
+  'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
+
+// dateInputValue is a "YYYY-MM-DD" string, as produced by <input type="date">.
+function setlistNameFromDate(dateInputValue) {
+  const [y, m, d] = dateInputValue.split('-').map(Number);
+  return `${d} ${RO_MONTHS[m - 1]} ${String(y).slice(-2)}`;
+}
+
 function downloadFile(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -126,7 +136,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 
