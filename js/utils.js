@@ -1,4 +1,4 @@
-/* utils.js — DOM helper, CSV/JSON (de)serialization, toasts. */
+/* utils.js — DOM helper, JSON (de)serialization, toasts. */
 (function () {
 
 // ---- Tiny DOM builder ----
@@ -64,68 +64,6 @@ function debounce(fn, wait) {
   };
 }
 
-// ---- CSV ----
-const SONG_FIELDS = ['title', 'key', 'tempo', 'link', 'structure', 'pace'];
-
-function csvEscape(value) {
-  const s = String(value ?? '');
-  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-  return s;
-}
-
-function songsToCSV(songs) {
-  const header = SONG_FIELDS.join(',');
-  const rows = songs.map(s => SONG_FIELDS.map(f => {
-    const v = f === 'tags' ? (s.tags || []).join('|') : s[f];
-    return csvEscape(v);
-  }).join(','));
-  return [header, ...rows].join('\n');
-}
-
-function parseCSV(text) {
-  // Simple RFC4180-ish parser supporting quoted fields with commas/newlines.
-  const rows = [];
-  let row = [], field = '', inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++; }
-        else inQuotes = false;
-      } else field += c;
-    } else {
-      if (c === '"') inQuotes = true;
-      else if (c === ',') { row.push(field); field = ''; }
-      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-      else if (c === '\r') { /* skip */ }
-      else field += c;
-    }
-  }
-  if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows.filter(r => r.length && !(r.length === 1 && r[0] === ''));
-}
-
-function csvToSongs(text) {
-  const rows = parseCSV(text);
-  if (!rows.length) return [];
-  const header = rows[0].map(h => h.trim().toLowerCase());
-  const dataRows = rows.slice(1);
-  return dataRows.map(r => {
-    const obj = {};
-    header.forEach((h, i) => { obj[h] = r[i] ?? ''; });
-    return {
-      id: DB.uid(),
-      title: obj.title || 'Untitled',
-      key: obj.key || '',
-      tempo: obj.tempo || '',
-      link: obj.link || '',
-      structure: obj.structure || '',
-      pace: normalizePace(obj.pace),
-      createdAt: Date.now()
-    };
-  });
-}
-
 function normalizePace(value) {
   const v = String(value || '').trim().toLowerCase();
   if (v === 'slow') return 'Slow';
@@ -189,7 +127,6 @@ async function copyToClipboard(text) {
 }
 
 window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch };
-window.CSVUtil = { songsToCSV, csvToSongs };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 

@@ -48,16 +48,8 @@ this app's origin. That means:
   colored badge: green/yellow/red)
 - Search by title, key, pace, or tag
 - Sort by title (A–Z / Z–A), key, tempo, or recently added
-- Import songs from CSV or JSON
+- Import songs from JSON
 - Export all songs to JSON (for backup)
-
-CSV format expected on import:
-```
-title,key,tempo,link,structure,tags,pace
-Amazing Grace,G,72,https://example.com,"Intro, V1, C, V2, C",Hymn|Classic,Slow
-```
-Tags are pipe-separated (`|`) within the CSV column. Pace must be one of
-`Slow`, `Medium`, or `Fast` (case-insensitive); anything else is ignored.
 
 **Setlists tab**
 - Create, edit, delete setlists
@@ -80,7 +72,7 @@ styles.css               All styling (design tokens at the top)
 manifest.webmanifest      PWA install metadata
 service-worker.js        Offline caching
 js/db.js                  IndexedDB data layer
-js/utils.js                DOM helpers, CSV/JSON parsing, toast, clipboard
+js/utils.js                DOM helpers, JSON parsing, toast, clipboard
 js/songs.js                 Songs tab (list, form, import)
 js/setlists.js               Setlists tab (list, builder, export)
 js/app.js                     Tab switching, shared modal/sheet manager
