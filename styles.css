@@ -426,7 +426,9 @@ a { color: var(--accent); }
 
 /* ============ Sheet (modal) ============ */
 .sheet-backdrop {
-  position: fixed; inset: 0;
+  position: fixed; left: 0; right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vvh, 100vh);
   background: rgba(43,42,40,0.4);
   z-index: 20;
   display: flex;
@@ -438,7 +440,7 @@ a { color: var(--accent); }
 .sheet {
   background: var(--paper);
   width: 100%;
-  max-height: 92vh;
+  max-height: calc(var(--vvh, 100vh) * 0.92);
   border-radius: 20px 20px 0 0;
   display: flex;
   flex-direction: column;
