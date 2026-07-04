@@ -665,13 +665,9 @@ a { color: var(--accent); }
 
 /* ============ Drag items ============ */
 .drag-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   padding: 7px 0;
   background: var(--paper);
   position: relative;
-  touch-action: pan-y;
 }
 .drag-item:first-child { padding-top: 6px; }
 .drag-item--dragging {
@@ -744,8 +740,6 @@ a { color: var(--accent); }
 }
 .setlist-item-swipe-wrap {
   position: relative;
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
   border-radius: var(--radius-s);
 }
@@ -761,14 +755,19 @@ a { color: var(--accent); }
 }
 .setlist-item-swipe-action.is-delete { justify-content: flex-start; background: var(--danger); }
 .setlist-item-swipe-action.is-edit { justify-content: flex-end; background: var(--ink); }
-.setlist-item-body {
+.setlist-item-row-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
   position: relative;
+}
+.setlist-item-row-content.is-swipe-animating { transition: transform 0.2s ease; }
+.setlist-item-body {
   flex: 1;
   min-width: 0;
-  background: var(--paper);
   touch-action: pan-y;
 }
-.setlist-item-body.is-swipe-animating { transition: transform 0.2s ease; }
 .setlist-item-titleline {
   display: flex;
   align-items: baseline;

@@ -274,26 +274,30 @@ function createSetlistsTab(container, ctx) {
         : el('div', { class: 'setlist-item-body' }, titleLine);
 
       const swipeAction = el('div', { class: 'setlist-item-swipe-action' });
-      const swipeWrap = el('div', { class: 'setlist-item-swipe-wrap' }, swipeAction, body);
-
-      const row = el('div', { class: 'drag-item', 'data-idx': String(idx) },
+      const rowContent = el('div', { class: 'setlist-item-row-content' },
         el('div', { class: 'drag-handle', title: 'Drag to reorder' },
           el('span', { class: 'drag-dots' }, '⠿')
         ),
-        swipeWrap
+        body
       );
-      attachItemSwipeGestures(body, swipeAction, idx);
+      const swipeWrap = el('div', { class: 'setlist-item-swipe-wrap' }, swipeAction, rowContent);
+
+      const row = el('div', { class: 'drag-item', 'data-idx': String(idx) }, swipeWrap);
+      // Swipe is detected from touches on the body (not the drag handle, which
+      // has its own vertical reorder gesture), but the whole row — handle
+      // included — slides together.
+      attachItemSwipeGestures(body, rowContent, swipeAction, idx);
       return row;
     }
 
     // ---- Swipe right = delete, swipe left = edit ----
-    function attachItemSwipeGestures(bodyEl, actionEl, idx) {
+    function attachItemSwipeGestures(listenEl, slideEl, actionEl, idx) {
       const THRESHOLD = 88;
       const MAX_REVEAL = 120;
       let dragging = false, decided = false, isHorizontal = false;
       let startX = 0, startY = 0, dx = 0;
 
-      function setTransform(x) { bodyEl.style.transform = x ? `translateX(${x}px)` : ''; }
+      function setTransform(x) { slideEl.style.transform = x ? `translateX(${x}px)` : ''; }
       function updateAction(x) {
         if (x > 0) {
           actionEl.textContent = '✕ Delete';
@@ -306,13 +310,13 @@ function createSetlistsTab(container, ctx) {
         }
       }
       function settle() {
-        bodyEl.classList.add('is-swipe-animating');
+        slideEl.classList.add('is-swipe-animating');
         setTransform(0);
       }
       function onStart(clientX, clientY) {
         dragging = true; decided = false; isHorizontal = false;
         startX = clientX; startY = clientY; dx = 0;
-        bodyEl.classList.remove('is-swipe-animating');
+        slideEl.classList.remove('is-swipe-animating');
       }
       function onMove(clientX, clientY) {
         if (!dragging) return false;
@@ -340,18 +344,18 @@ function createSetlistsTab(container, ctx) {
         else if (commitEdit) editItem(idx);
       }
 
-      bodyEl.addEventListener('touchstart', (e) => {
+      listenEl.addEventListener('touchstart', (e) => {
         const t = e.touches[0];
         onStart(t.clientX, t.clientY);
       }, { passive: true });
-      bodyEl.addEventListener('touchmove', (e) => {
+      listenEl.addEventListener('touchmove', (e) => {
         const t = e.touches[0];
         if (onMove(t.clientX, t.clientY)) e.preventDefault();
       }, { passive: false });
-      bodyEl.addEventListener('touchend', onEnd);
-      bodyEl.addEventListener('touchcancel', onEnd);
+      listenEl.addEventListener('touchend', onEnd);
+      listenEl.addEventListener('touchcancel', onEnd);
 
-      bodyEl.addEventListener('mousedown', (e) => {
+      listenEl.addEventListener('mousedown', (e) => {
         onStart(e.clientX, e.clientY);
         const onMouseMove = (e2) => onMove(e2.clientX, e2.clientY);
         const onMouseUp = () => {
