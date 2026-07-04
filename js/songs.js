@@ -185,18 +185,9 @@ function createSongsTab(container, ctx) {
     const chips = [];
     if (song.key) chips.push(el('span', { class: 'mini-chip mini-chip--key' }, song.key));
     if (song.tempo) chips.push(el('span', { class: 'mini-chip mini-chip--tempo' }, song.tempo));
-
-    const metaBits = [];
-    if (song.structure) metaBits.push(el('span', null, song.structure));
-
-    const hasBottomRow = metaBits.length > 0;
-    if (song.pace && !hasBottomRow) {
+    if (song.pace) {
       chips.push(el('span', { class: 'pace-dot pace-dot--inline pace-dot--' + song.pace.toLowerCase(), title: song.pace }));
     }
-
-    const bottomRow = el('div', { class: 'song-card-bottom' },
-      el('div', { class: 'song-card-meta' }, ...metaBits)
-    );
 
     const cardEl = el('div', { class: 'song-card' },
       el('div', { class: 'song-card-top' },
@@ -211,9 +202,7 @@ function createSongsTab(container, ctx) {
           }, song.title) : song.title
         ),
         el('div', { class: 'song-card-chips' }, ...chips)
-      ),
-      hasBottomRow ? bottomRow : null,
-      (song.pace && hasBottomRow) ? el('span', { class: 'pace-dot pace-dot--' + song.pace.toLowerCase(), title: song.pace }) : null
+      )
     );
 
     const actionEl = el('div', { class: 'song-swipe-action' }, '+ Add');
@@ -374,14 +363,13 @@ function createSongsTab(container, ctx) {
   function openSongForm(song) {
     const isEdit = !!song;
     const draft = song ? { ...song } : {
-      title: '', key: '', tempo: '', link: '', structure: '', pace: ''
+      title: '', key: '', tempo: '', link: '', pace: ''
     };
 
     const titleInput = el('input', { type: 'text', value: draft.title, placeholder: 'e.g. Amazing Grace' });
     const keyInput = el('input', { type: 'text', value: draft.key, placeholder: 'e.g. G' });
     const tempoInput = el('input', { type: 'text', value: draft.tempo, placeholder: 'e.g. 72' });
     const linkInput = el('input', { type: 'url', value: draft.link, placeholder: 'https://…' });
-    const structureInput = el('textarea', { placeholder: 'e.g. Intro, V1, C, V2, C, Bridge, C, Outro' }, draft.structure);
     const paceSelect = el('select', null,
       el('option', { value: '' }, 'None'),
       el('option', { value: 'Slow', selected: draft.pace === 'Slow' }, 'Slow'),
@@ -400,7 +388,6 @@ function createSongsTab(container, ctx) {
         const url = linkInput.value.trim();
         if (url) window.open(url, '_blank', 'noopener,noreferrer');
       }),
-      formField('Structure', structureInput, 'Free text — verse/chorus order, notes, etc.'),
       formField('Pace', paceSelect, 'Slow, Medium, or Fast')
     );
 
@@ -427,7 +414,6 @@ function createSongsTab(container, ctx) {
             key: keyInput.value.trim(),
             tempo: tempoInput.value.trim(),
             link: linkInput.value.trim(),
-            structure: structureInput.value.trim(),
             pace: paceSelect.value,
             createdAt: draft.createdAt || Date.now()
           };

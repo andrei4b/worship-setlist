@@ -43,9 +43,8 @@ this app's origin. That means:
 ## Features
 
 **Songs tab**
-- Add, edit, delete songs with title, key, tempo, link, structure (free
-  text), tags/category, and a pace (Slow, Medium, or Fast — shown as a
-  colored badge: green/yellow/red)
+- Add, edit, delete songs with title, key, tempo, link, and a pace (Slow,
+  Medium, or Fast — shown as a colored badge: green/yellow/red)
 - Search by title, key, pace, or tag
 - Sort by title (A–Z / Z–A), key, tempo, or recently added
 - Import songs from JSON

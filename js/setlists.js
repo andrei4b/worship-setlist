@@ -128,11 +128,9 @@ function createSetlistsTab(container, ctx) {
   function setlistCard(sl) {
     const items = sl.items || [];
     const songCount = items.filter(i => i.type === 'song').length;
-    const date = sl.date ? parseDateInput(sl.date) : new Date(sl.updatedAt || sl.createdAt || Date.now());
-    const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
     return el('div', { class: 'setlist-card', onclick: () => showDetail(sl) },
       el('h3', { class: 'setlist-card-title' }, sl.name || 'Untitled setlist'),
-      el('div', { class: 'setlist-card-sub' }, `${songCount} song${songCount === 1 ? '' : 's'} · ${dateStr}`)
+      el('div', { class: 'setlist-card-sub' }, `${songCount} song${songCount === 1 ? '' : 's'}`)
     );
   }
 

@@ -85,7 +85,6 @@ function jsonToSongs(text) {
     key: s.key || '',
     tempo: s.tempo || '',
     link: s.link || '',
-    structure: s.structure || '',
     pace: normalizePace(s.pace),
     createdAt: s.createdAt || Date.now()
   }));
