@@ -1,17 +1,11 @@
 /* setlists.js — Setlists tab: list + full detail page with drag reorder, auto-save */
 (function () {
 
-const SETLIST_SORT_OPTIONS = [
-  { id: 'recent', label: 'Most recent' },
-  { id: 'name-asc', label: 'Name A–Z' }
-];
-
 function createSetlistsTab(container, ctx) {
   const { el, clear, toast, debounce, normalizeForSearch } = UI;
 
   let setlists = [];
   let query = '';
-  let sortId = 'recent';
 
   // Two child views inside container: list and detail
   const listView  = el('div', { class: 'page-view' });
@@ -66,10 +60,7 @@ function createSetlistsTab(container, ctx) {
       list = list.filter(sl => normalizeForSearch(sl.name).includes(q));
     }
     list = [...list];
-    switch (sortId) {
-      case 'recent': list.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)); break;
-      case 'name-asc': list.sort((a, b) => a.name.localeCompare(b.name)); break;
-    }
+    list.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
     return list;
   }
 
@@ -88,14 +79,6 @@ function createSetlistsTab(container, ctx) {
           value: query,
           oninput: debounce((e) => { query = e.target.value; renderListItems(); }, 150)
         })
-      ),
-      el('div', { class: 'sort-row' },
-        ...SETLIST_SORT_OPTIONS.map(opt =>
-          el('button', {
-            class: 'chip-btn' + (sortId === opt.id ? ' is-active' : ''),
-            onclick: () => { sortId = opt.id; renderListItems(); updateChips(); }
-          }, opt.label)
-        )
       )
     );
     listView.appendChild(header);
@@ -111,11 +94,6 @@ function createSetlistsTab(container, ctx) {
     );
 
     function renderListItems() { renderListItemsInto(listWrap); }
-    function updateChips() {
-      header.querySelectorAll('.chip-btn').forEach((btn, i) => {
-        btn.classList.toggle('is-active', SETLIST_SORT_OPTIONS[i].id === sortId);
-      });
-    }
   }
 
   function renderListItemsInto(wrap) {
