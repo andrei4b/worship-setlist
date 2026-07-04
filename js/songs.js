@@ -41,7 +41,11 @@ function createSongsTab(container, ctx) {
 
     const header = el('div', { class: 'app-header' },
       el('div', { class: 'app-header-top' },
-        el('h1', { class: 'app-title' }, el('span', { class: 'mark' }, '♪'), 'Songs'),
+        el('h1', { class: 'app-title' },
+          el('span', { class: 'mark' }, '♪'),
+          'Songs',
+          el('span', { class: 'song-count' }, `(${songs.length})`)
+        ),
         el('button', { class: 'kebab-btn', title: 'More options', onclick: openSongsMenu }, '⋮')
       ),
       el('div', { class: 'searchbar' },
@@ -58,8 +62,7 @@ function createSongsTab(container, ctx) {
             class: `chip-btn chip-btn--pace-${pace.toLowerCase()}` + (paceFilter === pace ? ' is-active' : ''),
             onclick: () => { paceFilter = paceFilter === pace ? null : pace; renderList(); updatePaceChips(); }
           }, pace)
-        ),
-        el('span', { class: 'song-count' }, `${songs.length} song${songs.length === 1 ? '' : 's'}`)
+        )
       )
     );
     root.appendChild(header);
