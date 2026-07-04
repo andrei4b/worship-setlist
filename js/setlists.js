@@ -372,12 +372,10 @@ function createSetlistsTab(container, ctx) {
     }
 
     async function removeItem(idx) {
-      const item = draft.items[idx];
-      const label = item.type === 'song' ? (getSongById(item.songId)?.title || 'Song') : 'Text entry';
       draft.items.splice(idx, 1);
       await autoSave(draft);
       renderItems();
-      toast(`Removed "${label}"`);
+      toast('Removed item');
     }
 
     function editItem(idx) {
