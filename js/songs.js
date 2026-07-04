@@ -336,8 +336,11 @@ function createSongsTab(container, ctx) {
         el('button', {
           class: 'btn btn--primary btn--block',
           onclick: () => {
-            const name = nameInput.value.trim() || 'New setlist';
-            addToSetlist({ id: DB.uid(), name, items: [], createdAt: Date.now(), updatedAt: Date.now() });
+            const date = dateInput.value;
+            const name = nameInput.value.trim();
+            if (!date) { toast('Date is required', { variant: 'danger' }); return; }
+            if (!name) { toast('Setlist name is required', { variant: 'danger' }); return; }
+            addToSetlist({ id: DB.uid(), name, date, items: [], createdAt: Date.now(), updatedAt: Date.now() });
           }
         }, 'Create & Add')
       );

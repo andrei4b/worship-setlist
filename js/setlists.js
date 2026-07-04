@@ -2,7 +2,7 @@
 (function () {
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput } = UI;
 
   let setlists = [];
   let query = '';
@@ -68,8 +68,13 @@ function createSetlistsTab(container, ctx) {
       list = list.filter(sl => normalizeForSearch(sl.name).includes(q));
     }
     list = [...list];
-    list.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+    list.sort((a, b) => setlistSortKey(b) - setlistSortKey(a));
     return list;
+  }
+
+  function setlistSortKey(sl) {
+    if (sl.date) return parseDateInput(sl.date).getTime();
+    return sl.updatedAt || sl.createdAt || 0;
   }
 
   function renderList() {
@@ -123,7 +128,7 @@ function createSetlistsTab(container, ctx) {
   function setlistCard(sl) {
     const items = sl.items || [];
     const songCount = items.filter(i => i.type === 'song').length;
-    const date = new Date(sl.updatedAt || sl.createdAt || Date.now());
+    const date = sl.date ? parseDateInput(sl.date) : new Date(sl.updatedAt || sl.createdAt || Date.now());
     const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
     return el('div', { class: 'setlist-card', onclick: () => showDetail(sl) },
       el('h3', { class: 'setlist-card-title' }, sl.name || 'Untitled setlist'),
@@ -131,14 +136,15 @@ function createSetlistsTab(container, ctx) {
     );
   }
 
-  function createNewSetlist() {
-    const todayStr = FileUtil.dateStamp();
+  // Shared date+name sheet for both creating and editing a setlist. Both
+  // fields are mandatory — onSubmit only fires once each has a value.
+  function openSetlistFormSheet({ title, dateValue, nameValue, submitLabel, onSubmit }) {
     const dateInput = el('input', {
       type: 'date',
-      value: todayStr,
-      onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value || todayStr); }
+      value: dateValue,
+      onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value); }
     });
-    const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: setlistNameFromDate(todayStr) });
+    const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: nameValue });
     const body = el('div', null,
       formField('Date', dateInput),
       formField('Setlist name', nameInput)
@@ -146,17 +152,33 @@ function createSetlistsTab(container, ctx) {
     const footer = el('div', { class: 'sheet-footer' },
       el('button', {
         class: 'btn btn--primary btn--block',
-        onclick: async () => {
-          const name = nameInput.value.trim() || 'New setlist';
-          const sl = { id: DB.uid(), name, items: [], createdAt: Date.now(), updatedAt: Date.now() };
-          await DB.saveSetlist(sl);
-          setlists.push(sl);
-          closeSheet(true, true);
-          showDetail(sl, { replace: true });
+        onclick: () => {
+          const date = dateInput.value;
+          const name = nameInput.value.trim();
+          if (!date) { toast('Date is required', { variant: 'danger' }); return; }
+          if (!name) { toast('Setlist name is required', { variant: 'danger' }); return; }
+          onSubmit({ date, name });
         }
-      }, 'Create')
+      }, submitLabel)
     );
-    openSheet('New setlist', body, footer);
+    openSheet(title, body, footer);
+  }
+
+  function createNewSetlist() {
+    const todayStr = FileUtil.dateStamp();
+    openSetlistFormSheet({
+      title: 'New setlist',
+      dateValue: todayStr,
+      nameValue: setlistNameFromDate(todayStr),
+      submitLabel: 'Create',
+      onSubmit: async ({ date, name }) => {
+        const sl = { id: DB.uid(), name, date, items: [], createdAt: Date.now(), updatedAt: Date.now() };
+        await DB.saveSetlist(sl);
+        setlists.push(sl);
+        closeSheet(true, true);
+        showDetail(sl, { replace: true });
+      }
+    });
   }
 
   function emptyState(glyph, title, body) {
@@ -176,41 +198,24 @@ function createSetlistsTab(container, ctx) {
 
     // ---- Top bar ----
     const titleEl = el('span', { class: 'detail-title-text' }, draft.name || 'Untitled setlist');
-    const titleInput = el('input', {
-      class: 'detail-title-input',
-      type: 'text',
-      value: draft.name,
-      placeholder: 'Setlist name'
-    });
-    titleInput.style.display = 'none';
 
-    // Toggle inline edit on title click
-    titleEl.addEventListener('click', () => {
-      titleEl.style.display = 'none';
-      titleInput.style.display = '';
-      titleInput.focus();
-      titleInput.select();
-    });
-
-    async function commitTitleEdit() {
-      const val = titleInput.value.trim();
-      if (val) draft.name = val;
-      titleEl.textContent = draft.name || 'Untitled setlist';
-      titleEl.style.display = '';
-      titleInput.style.display = 'none';
-      await autoSave(draft);
+    function openEditSetlistSheet() {
+      openSetlistFormSheet({
+        title: 'Edit setlist',
+        dateValue: draft.date || FileUtil.dateStamp(),
+        nameValue: draft.name || '',
+        submitLabel: 'Save',
+        onSubmit: async ({ date, name }) => {
+          draft.date = date;
+          draft.name = name;
+          titleEl.textContent = draft.name;
+          closeSheet();
+          await autoSave(draft);
+        }
+      });
     }
-    titleInput.addEventListener('blur', commitTitleEdit);
-    titleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') titleInput.blur(); });
 
-    async function handleBack() {
-      if (draft.items.length === 0) {
-        await DB.deleteSetlist(draft.id);
-        setlists = setlists.filter(s => s.id !== draft.id);
-        showList();
-        toast('Empty setlist discarded');
-        return;
-      }
+    function handleBack() {
       showList();
     }
     function registerBackHandler() {
@@ -233,12 +238,12 @@ function createSetlistsTab(container, ctx) {
       el('button', { class: 'detail-back-btn', onclick: () => history.back(), title: 'Back' },
         el('span', null, '←')
       ),
-      el('div', { class: 'detail-title-wrap' }, titleEl, titleInput),
+      el('div', { class: 'detail-title-wrap' }, titleEl),
       el('div', { class: 'detail-topbar-actions' },
         el('button', {
           class: 'kebab-btn',
           title: 'More options',
-          onclick: () => openDetailMenu(draft)
+          onclick: () => openDetailMenu(draft, openEditSetlistSheet)
         }, '⋮')
       )
     );
@@ -735,8 +740,9 @@ function createSetlistsTab(container, ctx) {
   }
 
   // ── Detail page 3-dot menu ─────────────────────────────────────────────
-  function openDetailMenu(draft) {
+  function openDetailMenu(draft, onEdit) {
     openActionMenu([
+      { icon: '✎', label: 'Edit setlist', onClick: onEdit },
       { icon: '⧉', label: 'Copy as text', onClick: () => copySetlistText(draft) },
       { icon: '🗑', label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
     ]);

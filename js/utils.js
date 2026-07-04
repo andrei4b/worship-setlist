@@ -99,14 +99,24 @@ function dateStamp() {
   return `${y}-${m}-${day}`;
 }
 
-// ---- Setlist naming from a date (Romanian month names) ----
+// ---- Setlist naming from a date (Romanian day/month names) ----
 const RO_MONTHS = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
   'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
+const RO_DAYS = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
 
 // dateInputValue is a "YYYY-MM-DD" string, as produced by <input type="date">.
+// Parsed as local calendar values (not UTC) so the date never shifts a day
+// depending on the browser's timezone.
+function parseDateInput(dateInputValue) {
+  const [y, m, d] = String(dateInputValue || '').split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
 function setlistNameFromDate(dateInputValue) {
-  const [y, m, d] = dateInputValue.split('-').map(Number);
-  return `${d} ${RO_MONTHS[m - 1]} ${String(y).slice(-2)}`;
+  const date = parseDateInput(dateInputValue);
+  const day = RO_DAYS[date.getDay()];
+  const dayCap = day.charAt(0).toUpperCase() + day.slice(1);
+  return `${dayCap}, ${date.getDate()} ${RO_MONTHS[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
 }
 
 function downloadFile(filename, content, mime) {
@@ -136,7 +146,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 
