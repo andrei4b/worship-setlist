@@ -6,6 +6,25 @@ function createSetlistsTab(container, ctx) {
 
   let setlists = [];
   let query = '';
+  let currentDetailBackHandler = null;
+
+  // Let the phone's back button/gesture close the detail page instead of
+  // leaving the app, as long as the Setlists tab is the one on screen.
+  window.addEventListener('popstate', () => {
+    if (container.style.display === 'none') {
+      // Not the active tab — the browser still consumed a history step, so
+      // push it right back or the detail view breaks once this tab is shown
+      // again (an extra back press would exit the app instead of the view).
+      if (currentDetailBackHandler) history.pushState({ view: 'setlist-detail' }, '');
+      return;
+    }
+    if (document.querySelector('.sheet-backdrop')) closeSheet(true);
+    if (currentDetailBackHandler) {
+      const handler = currentDetailBackHandler;
+      currentDetailBackHandler = null;
+      handler();
+    }
+  });
 
   // Two child views inside container: list and detail
   const listView  = el('div', { class: 'page-view' });
@@ -39,9 +58,11 @@ function createSetlistsTab(container, ctx) {
     detailView.classList.remove('page-view--hidden');
     detailView.classList.add('page-view--slide-in');
     requestAnimationFrame(() => detailView.classList.remove('page-view--slide-in'));
+    history.pushState({ view: 'setlist-detail' }, '');
   }
 
   function showList() {
+    currentDetailBackHandler = null;
     listView.classList.remove('page-view--hidden');
     detailView.classList.add('page-view--slide-out');
     setTimeout(() => {
@@ -185,9 +206,10 @@ function createSetlistsTab(container, ctx) {
       }
       showList();
     }
+    currentDetailBackHandler = handleBack;
 
     const topBar = el('div', { class: 'detail-topbar' },
-      el('button', { class: 'detail-back-btn', onclick: handleBack, title: 'Back' },
+      el('button', { class: 'detail-back-btn', onclick: () => history.back(), title: 'Back' },
         el('span', null, '←')
       ),
       el('div', { class: 'detail-title-wrap' }, titleEl, titleInput),
@@ -627,6 +649,8 @@ function createSetlistsTab(container, ctx) {
     if (!confirm(`Delete "${draft.name || 'this setlist'}"? This can't be undone.`)) return;
     await DB.deleteSetlist(draft.id);
     setlists = setlists.filter(s => s.id !== draft.id);
+    currentDetailBackHandler = null;
+    history.back();
     showList();
     toast('Setlist deleted');
   }
