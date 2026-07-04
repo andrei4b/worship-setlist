@@ -332,7 +332,13 @@ a { color: var(--accent); }
   left: 0; top: 0; bottom: 0;
   width: 4px;
   border-radius: var(--radius-m) 0 0 var(--radius-m);
+  opacity: 1;
+  transition: opacity 0.15s ease;
 }
+/* Hide the accent while the card is dragged — it's pinned to the card's
+   edge, not the row's, so it looks disconnected once the card has slid
+   away from the row's actual left edge. */
+.song-card.is-swiping::before { opacity: 0; }
 .song-card--pace-slow::before { background: var(--pace-slow-soft); }
 .song-card--pace-medium::before { background: var(--pace-medium-soft); }
 .song-card--pace-fast::before { background: var(--pace-fast-soft); }

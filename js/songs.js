@@ -231,6 +231,7 @@ function createSongsTab(container, ctx) {
     }
     function settle() {
       cardEl.classList.add('is-swipe-animating');
+      cardEl.classList.remove('is-swiping');
       setTransform(0);
     }
     function onStart(clientX, clientY) {
@@ -249,6 +250,7 @@ function createSongsTab(container, ctx) {
         if (!isHorizontal) { dragging = false; return false; }
       }
       if (!isHorizontal) return false;
+      cardEl.classList.add('is-swiping');
       dx = Math.max(-MAX_REVEAL, Math.min(MAX_REVEAL, rawDx));
       if (Math.abs(dx) > 4) swiped = true;
       updateAction(dx);
