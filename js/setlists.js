@@ -33,13 +33,19 @@ function createSetlistsTab(container, ctx) {
   }
 
   // ── Page transitions ───────────────────────────────────────────────────
-  function showDetail(setlist) {
+  function showDetail(setlist, opts) {
     renderDetail(setlist);
     listView.classList.add('page-view--hidden');
     detailView.classList.remove('page-view--hidden');
     detailView.classList.add('page-view--slide-in');
     requestAnimationFrame(() => detailView.classList.remove('page-view--slide-in'));
-    history.pushState({ view: 'setlist-detail' }, '');
+    const state = { view: 'setlist-detail' };
+    // When coming from a sheet we just closed (see createNewSetlist), that
+    // sheet already owns the current history entry — replace it instead of
+    // pushing a new one, since pushState racing an in-flight history.back()
+    // from closeSheet() corrupts the stack (one push effectively gets lost).
+    if (opts && opts.replace) history.replaceState(state, '');
+    else history.pushState(state, '');
   }
 
   function showList() {
@@ -145,8 +151,8 @@ function createSetlistsTab(container, ctx) {
           const sl = { id: DB.uid(), name, items: [], createdAt: Date.now(), updatedAt: Date.now() };
           await DB.saveSetlist(sl);
           setlists.push(sl);
-          closeSheet(true);
-          showDetail(sl);
+          closeSheet(true, true);
+          showDetail(sl, { replace: true });
         }
       }, 'Create')
     );
