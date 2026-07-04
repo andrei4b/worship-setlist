@@ -98,7 +98,7 @@ function createSongsTab(container, ctx) {
       wrap.appendChild(emptyState(
         '♪',
         'No songs yet',
-        'Add your first song, or import a list from a CSV or JSON file.'
+        'Add your first song, or import a list from a JSON file.'
       ));
       return;
     }
