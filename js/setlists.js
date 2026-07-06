@@ -5,6 +5,10 @@
 // indexed Date#getDay()-style, i.e. 0 = Sunday, under the hood).
 const DAY_PICKER_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
+// Sentinel band-filter value meaning "setlists with no band set", distinct
+// from null (no filter — show everything).
+const NO_BAND = '__no_band__';
+
 const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
@@ -76,7 +80,8 @@ function createSetlistsTab(container, ctx) {
       list = list.filter(sl => normalizeForSearch(sl.name).includes(q));
     }
     if (dayFilter !== null) list = list.filter(sl => getSetlistDate(sl).getDay() === dayFilter);
-    if (bandFilter !== null) list = list.filter(sl => (sl.band || '') === bandFilter);
+    if (bandFilter === NO_BAND) list = list.filter(sl => !sl.band);
+    else if (bandFilter !== null) list = list.filter(sl => sl.band === bandFilter);
     list = [...list];
     list.sort((a, b) => setlistSortKey(b) - setlistSortKey(a));
     return list;
@@ -148,7 +153,7 @@ function createSetlistsTab(container, ctx) {
         el('button', {
           class: 'chip-btn' + (bandFilter !== null ? ' is-active' : ''),
           onclick: openBandFilterPicker
-        }, (bandFilter !== null ? bandFilter : 'All bands') + ' ▾')
+        }, (bandFilter === null ? 'All bands' : bandFilter === NO_BAND ? 'No band' : bandFilter) + ' ▾')
       )
     );
     listView.appendChild(header);
@@ -193,12 +198,13 @@ function createSetlistsTab(container, ctx) {
         null);
       return;
     }
-    const options = [null, ...bands];
+    const hasUnbanded = setlists.some(sl => !sl.band);
+    const options = [null, ...(hasUnbanded ? [NO_BAND] : []), ...bands];
     const listEl = el('div', { class: 'picker-list' },
       ...options.map(band => el('div', {
         class: 'picker-row' + (bandFilter === band ? ' is-selected' : ''),
         onclick: () => { bandFilter = band; closeSheet(); renderList(); }
-      }, el('div', { class: 'picker-row-title' }, band === null ? 'All bands' : band)))
+      }, el('div', { class: 'picker-row-title' }, band === null ? 'All bands' : band === NO_BAND ? 'No band' : band)))
     );
     openSheet('Filter by band', listEl, null);
   }
