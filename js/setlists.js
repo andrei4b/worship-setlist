@@ -99,9 +99,10 @@ function createSetlistsTab(container, ctx) {
     return sl.band ? `${weekday} · ${sl.band}` : weekday;
   }
 
-  // Text entries always start with "-- " (e.g. "-- Welcome & Announcements").
-  // Strips any pre-existing "--" prefix (with or without a space, from
-  // older entries) first so re-editing normalizes it instead of doubling up.
+  // The "-- " marker is a display/share-time affordance, not stored data —
+  // item.text holds just the raw content. Strips any pre-existing "--"
+  // prefix first (with or without a space) so entries saved by an older
+  // version of the app, which did store the prefix, don't end up doubled.
   function withTextEntryPrefix(val) {
     return '-- ' + val.replace(/^--\s*/, '');
   }
@@ -368,7 +369,7 @@ function createSetlistsTab(container, ctx) {
         }
       } else {
         titleLine = el('div', { class: 'setlist-item-titleline' },
-          el('span', { class: 'setlist-item-title is-text' }, item.text || '(empty)')
+          el('span', { class: 'setlist-item-title is-text' }, item.text ? withTextEntryPrefix(item.text) : '(empty)')
         );
       }
 
@@ -511,7 +512,7 @@ function createSetlistsTab(container, ctx) {
         el('button', { class: 'btn btn--primary btn--block', onclick: () => {
           const val = textInput.value.trim();
           if (!val) { toast('Text can\u2019t be empty', { variant: 'danger' }); return; }
-          item.text = withTextEntryPrefix(val); closeSheet(); onSave();
+          item.text = withoutTextEntryPrefix(val); closeSheet(); onSave();
         }}, 'Save')
       );
       openSheet('Edit text entry', body, footer);
@@ -561,7 +562,7 @@ function createSetlistsTab(container, ctx) {
         el('button', { class: 'btn btn--primary btn--block', onclick: async () => {
           const val = textInput.value.trim();
           if (!val) { toast('Text can\u2019t be empty', { variant: 'danger' }); return; }
-          draft.items.push({ type: 'text', text: withTextEntryPrefix(val) });
+          draft.items.push({ type: 'text', text: withoutTextEntryPrefix(val) });
           closeSheet();
           await autoSave(draft);
           renderItems();
