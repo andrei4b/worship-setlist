@@ -106,6 +106,10 @@ function createSetlistsTab(container, ctx) {
     return '-- ' + val.replace(/^--\s*/, '');
   }
 
+  function withoutTextEntryPrefix(val) {
+    return String(val || '').replace(/^--\s*/, '');
+  }
+
   // Sunday/Tuesday get their own chip; every other weekday falls under "Alte zile".
   function dayChipForSetlist(sl) {
     const day = getSetlistDate(sl).getDay();
@@ -501,7 +505,7 @@ function createSetlistsTab(container, ctx) {
     }
 
     function openTextEntryEditor(item, onSave) {
-      const textInput = el('textarea', { placeholder: 'e.g. Welcome, Offering, Scripture reading…' }, item.text || '');
+      const textInput = el('textarea', { placeholder: 'e.g. Welcome, Offering, Scripture reading…' }, withoutTextEntryPrefix(item.text));
       const body = el('div', null, formField('Text', textInput));
       const footer = el('div', { class: 'sheet-footer' },
         el('button', { class: 'btn btn--primary btn--block', onclick: () => {
