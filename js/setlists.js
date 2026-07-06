@@ -115,6 +115,11 @@ function createSetlistsTab(container, ctx) {
     return [...new Set(setlists.map(sl => sl.band).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   }
 
+  function getAvailableDays() {
+    const present = new Set(setlists.map(sl => getSetlistDate(sl).getDay()));
+    return DAY_PICKER_ORDER.filter(d => present.has(d));
+  }
+
   function renderList() {
     clear(listView);
 
@@ -163,7 +168,14 @@ function createSetlistsTab(container, ctx) {
 
   // ── Day/band filter pickers ─────────────────────────────────────────────
   function openDayFilterPicker() {
-    const options = [null, ...DAY_PICKER_ORDER];
+    const days = getAvailableDays();
+    if (!days.length) {
+      openSheet('Filter by day',
+        el('p', { class: 'field-hint', style: 'padding:14px 0' }, 'No setlists yet.'),
+        null);
+      return;
+    }
+    const options = [null, ...days];
     const listEl = el('div', { class: 'picker-list' },
       ...options.map(day => el('div', {
         class: 'picker-row' + (dayFilter === day ? ' is-selected' : ''),
