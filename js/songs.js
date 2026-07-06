@@ -1,7 +1,7 @@
 /* songs.js — Songs tab: list, search, sort, CRUD, import/export */
 (function () {
 
-const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate } = UI;
+const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput } = UI;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
@@ -9,6 +9,14 @@ const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
 function groupLetter(title) {
   const c = (title || '').trim().charAt(0).toUpperCase();
   return /[A-Z]/.test(c) ? c : '#';
+}
+
+// Matches setlists.js's own sort — most recent setlist date first, falling
+// back to last-modified time for setlists saved before the date field
+// existed.
+function setlistSortKey(sl) {
+  const date = sl.date ? parseDateInput(sl.date) : new Date(sl.updatedAt || sl.createdAt || Date.now());
+  return date.getTime();
 }
 
 function createSongsTab(container, ctx) {
@@ -300,7 +308,7 @@ function createSongsTab(container, ctx) {
 
   // ---- Add to setlist ----
   async function openAddToSetlistSheet(song) {
-    const setlists = await DB.getSetlists();
+    const setlists = (await DB.getSetlists()).sort((a, b) => setlistSortKey(b) - setlistSortKey(a));
 
     async function addToSetlist(sl) {
       sl.items = sl.items || [];
