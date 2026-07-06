@@ -7,6 +7,8 @@ const DAY_CHIP_OPTIONS = [
   { key: 'other', label: 'Alte zile' }
 ];
 
+const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>`;
+
 function createSetlistsTab(container, ctx) {
   const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, parseDateInput } = UI;
 
@@ -294,6 +296,11 @@ function createSetlistsTab(container, ctx) {
         el('span', null, '←')
       ),
       el('div', { class: 'detail-topbar-actions' },
+        el('button', {
+          class: 'kebab-btn',
+          title: 'Share setlist',
+          onclick: () => shareSetlist(draft)
+        }, el('span', { html: SHARE_ICON })),
         el('button', {
           class: 'kebab-btn',
           title: 'More options',
@@ -686,15 +693,28 @@ function createSetlistsTab(container, ctx) {
     }
   }
 
-  // ── Clipboard export ───────────────────────────────────────────────────
-  async function copySetlistText(setlist) {
+  // ── Share / clipboard export ────────────────────────────────────────────
+  function buildSetlistText(setlist) {
     const lines = (setlist.items || []).map(item => {
       if (item.type === 'text') return withTextEntryPrefix(item.text || '');
       const song = getSongById(item.songId);
       if (!song) return '(song removed)';
       return `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
     });
-    const text = (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
+    return (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
+  }
+
+  async function shareSetlist(setlist) {
+    const text = buildSetlistText(setlist);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: setlist.name || 'Setlist', text });
+      } catch (err) {
+        if (err.name !== 'AbortError') toast('Could not share — try again', { variant: 'danger' });
+      }
+      return;
+    }
+    // No Web Share support (e.g. desktop) — fall back to a direct copy.
     const ok = await FileUtil.copyToClipboard(text);
     toast(ok ? 'Copied to clipboard' : 'Could not copy — try again');
   }
@@ -800,7 +820,6 @@ function createSetlistsTab(container, ctx) {
   function openDetailMenu(draft, onEdit) {
     openActionMenu([
       { icon: '✎', label: 'Edit setlist', onClick: onEdit },
-      { icon: '⧉', label: 'Copy as text', onClick: () => copySetlistText(draft) },
       { icon: '🗑', label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
     ]);
   }
