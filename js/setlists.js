@@ -97,9 +97,11 @@ function createSetlistsTab(container, ctx) {
     return sl.band ? `${weekday} · ${sl.band}` : weekday;
   }
 
-  // Text entries always start with "--" (e.g. "--Welcome & Announcements").
+  // Text entries always start with "-- " (e.g. "-- Welcome & Announcements").
+  // Strips any pre-existing "--" prefix (with or without a space, from
+  // older entries) first so re-editing normalizes it instead of doubling up.
   function withTextEntryPrefix(val) {
-    return val.startsWith('--') ? val : '--' + val;
+    return '-- ' + val.replace(/^--\s*/, '');
   }
 
   // Sunday/Tuesday get their own chip; every other weekday falls under "Alte zile".
