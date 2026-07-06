@@ -365,7 +365,7 @@ function createSetlistsTab(container, ctx) {
 
     // ---- Add bar ----
     const addBar = el('div', { class: 'detail-add-bar' },
-      el('button', { class: 'btn btn--secondary', style: 'flex:1', onclick: openAddSongPicker }, '+ Song'),
+      el('button', { class: 'btn btn--accent-soft', style: 'flex:1', onclick: openAddSongPicker }, '+ Song'),
       el('button', { class: 'btn btn--secondary', style: 'flex:1', onclick: openAddTextEntry }, '+ Text entry')
     );
     detailView.appendChild(addBar);

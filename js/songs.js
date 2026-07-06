@@ -59,7 +59,7 @@ function createSongsTab(container, ctx) {
       el('div', { class: 'searchbar' },
         el('input', {
           type: 'search',
-          placeholder: 'Search title',
+          placeholder: 'Search songs…',
           value: query,
           oninput: debounce((e) => { query = e.target.value; renderList(); }, 150)
         })
