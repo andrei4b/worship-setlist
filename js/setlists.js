@@ -90,6 +90,13 @@ function createSetlistsTab(container, ctx) {
     return getSetlistDate(sl).getTime();
   }
 
+  // "<weekday>" or "<weekday> · <band>" — used for both the list card and
+  // the detail page header.
+  function setlistSubtitle(sl) {
+    const weekday = weekdayNameFromJSDate(getSetlistDate(sl));
+    return sl.band ? `${weekday} · ${sl.band}` : weekday;
+  }
+
   // Sunday/Tuesday get their own chip; every other weekday falls under "Alte zile".
   function dayChipForSetlist(sl) {
     const day = getSetlistDate(sl).getDay();
@@ -160,11 +167,9 @@ function createSetlistsTab(container, ctx) {
   }
 
   function setlistCard(sl) {
-    const weekday = weekdayNameFromJSDate(getSetlistDate(sl));
-    const sub = sl.band ? `${weekday} · ${sl.band}` : weekday;
     return el('div', { class: 'setlist-card', onclick: () => showDetail(sl) },
       el('h3', { class: 'setlist-card-title' }, sl.name || 'Untitled setlist'),
-      el('div', { class: 'setlist-card-sub' }, sub)
+      el('div', { class: 'setlist-card-sub' }, setlistSubtitle(sl))
     );
   }
 
@@ -231,8 +236,9 @@ function createSetlistsTab(container, ctx) {
     // Working copy
     const draft = { ...setlist, items: (setlist.items || []).map(i => ({ ...i })) };
 
-    // ---- Top bar ----
-    const titleEl = el('span', { class: 'detail-title-text' }, draft.name || 'Untitled setlist');
+    // ---- Header (title + weekday/band subtitle) ----
+    const titleEl = el('h2', { class: 'detail-header-title' }, draft.name || 'Untitled setlist');
+    const subEl = el('div', { class: 'detail-header-sub' }, setlistSubtitle(draft));
 
     function openEditSetlistSheet() {
       openSetlistFormSheet({
@@ -246,6 +252,7 @@ function createSetlistsTab(container, ctx) {
           draft.name = name;
           draft.band = band;
           titleEl.textContent = draft.name;
+          subEl.textContent = setlistSubtitle(draft);
           closeSheet();
           await autoSave(draft);
         }
@@ -275,7 +282,6 @@ function createSetlistsTab(container, ctx) {
       el('button', { class: 'detail-back-btn', onclick: () => history.back(), title: 'Back' },
         el('span', null, '←')
       ),
-      el('div', { class: 'detail-title-wrap' }, titleEl),
       el('div', { class: 'detail-topbar-actions' },
         el('button', {
           class: 'kebab-btn',
@@ -285,6 +291,9 @@ function createSetlistsTab(container, ctx) {
       )
     );
     detailView.appendChild(topBar);
+
+    const detailHeader = el('div', { class: 'detail-header' }, titleEl, subEl);
+    detailView.appendChild(detailHeader);
 
     // ---- Items list ----
     const itemsWrap = el('div', { class: 'detail-items' });
