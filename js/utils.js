@@ -125,6 +125,9 @@ function weekdayNameFromDate(dateInputValue) {
   return weekdayNameFromJSDate(parseDateInput(dateInputValue));
 }
 
+// Capitalized Romanian weekday names, indexed like Date#getDay() (0 = Sunday).
+const WEEKDAY_NAMES = RO_DAYS.map(d => d.charAt(0).toUpperCase() + d.slice(1));
+
 function downloadFile(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -152,7 +155,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, parseDateInput };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 

@@ -1,20 +1,19 @@
 /* setlists.js — Setlists tab: list + full detail page with drag reorder, auto-save */
 (function () {
 
-const DAY_CHIP_OPTIONS = [
-  { key: 'sunday', label: 'Duminică' },
-  { key: 'tuesday', label: 'Marți' },
-  { key: 'other', label: 'Alte zile' }
-];
+// Monday-first display order for the day-filter picker (data is still
+// indexed Date#getDay()-style, i.e. 0 = Sunday, under the hood).
+const DAY_PICKER_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, parseDateInput } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput } = UI;
 
   let setlists = [];
   let query = '';
   let dayFilter = null;
+  let bandFilter = null;
 
   // Two child views inside container: list and detail
   const listView  = el('div', { class: 'page-view' });
@@ -76,7 +75,8 @@ function createSetlistsTab(container, ctx) {
       const q = normalizeForSearch(query.trim());
       list = list.filter(sl => normalizeForSearch(sl.name).includes(q));
     }
-    if (dayFilter) list = list.filter(sl => dayChipForSetlist(sl) === dayFilter);
+    if (dayFilter !== null) list = list.filter(sl => getSetlistDate(sl).getDay() === dayFilter);
+    if (bandFilter !== null) list = list.filter(sl => (sl.band || '') === bandFilter);
     list = [...list];
     list.sort((a, b) => setlistSortKey(b) - setlistSortKey(a));
     return list;
@@ -111,12 +111,8 @@ function createSetlistsTab(container, ctx) {
     return String(val || '').replace(/^--\s*/, '');
   }
 
-  // Sunday/Tuesday get their own chip; every other weekday falls under "Alte zile".
-  function dayChipForSetlist(sl) {
-    const day = getSetlistDate(sl).getDay();
-    if (day === 0) return 'sunday';
-    if (day === 2) return 'tuesday';
-    return 'other';
+  function getAvailableBands() {
+    return [...new Set(setlists.map(sl => sl.band).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   }
 
   function renderList() {
@@ -140,12 +136,14 @@ function createSetlistsTab(container, ctx) {
         })
       ),
       el('div', { class: 'sort-row' },
-        ...DAY_CHIP_OPTIONS.map(opt =>
-          el('button', {
-            class: 'chip-btn' + (dayFilter === opt.key ? ' is-active' : ''),
-            onclick: () => { dayFilter = dayFilter === opt.key ? null : opt.key; renderListItems(); updateDayChips(); }
-          }, opt.label)
-        )
+        el('button', {
+          class: 'chip-btn' + (dayFilter !== null ? ' is-active' : ''),
+          onclick: openDayFilterPicker
+        }, (dayFilter !== null ? weekdayNames[dayFilter] : 'All days') + ' ▾'),
+        el('button', {
+          class: 'chip-btn' + (bandFilter !== null ? ' is-active' : ''),
+          onclick: openBandFilterPicker
+        }, (bandFilter !== null ? bandFilter : 'All bands') + ' ▾')
       )
     );
     listView.appendChild(header);
@@ -161,11 +159,36 @@ function createSetlistsTab(container, ctx) {
     );
 
     function renderListItems() { renderListItemsInto(listWrap); }
-    function updateDayChips() {
-      header.querySelectorAll('.chip-btn').forEach((btn, i) => {
-        btn.classList.toggle('is-active', DAY_CHIP_OPTIONS[i].key === dayFilter);
-      });
+  }
+
+  // ── Day/band filter pickers ─────────────────────────────────────────────
+  function openDayFilterPicker() {
+    const options = [null, ...DAY_PICKER_ORDER];
+    const listEl = el('div', { class: 'picker-list' },
+      ...options.map(day => el('div', {
+        class: 'picker-row' + (dayFilter === day ? ' is-selected' : ''),
+        onclick: () => { dayFilter = day; closeSheet(); renderList(); }
+      }, el('div', { class: 'picker-row-title' }, day === null ? 'All days' : weekdayNames[day])))
+    );
+    openSheet('Filter by day', listEl, null);
+  }
+
+  function openBandFilterPicker() {
+    const bands = getAvailableBands();
+    if (!bands.length) {
+      openSheet('Filter by band',
+        el('p', { class: 'field-hint', style: 'padding:14px 0' }, 'No setlists have a band name yet.'),
+        null);
+      return;
     }
+    const options = [null, ...bands];
+    const listEl = el('div', { class: 'picker-list' },
+      ...options.map(band => el('div', {
+        class: 'picker-row' + (bandFilter === band ? ' is-selected' : ''),
+        onclick: () => { bandFilter = band; closeSheet(); renderList(); }
+      }, el('div', { class: 'picker-row-title' }, band === null ? 'All bands' : band)))
+    );
+    openSheet('Filter by band', listEl, null);
   }
 
   function renderListItemsInto(wrap) {
