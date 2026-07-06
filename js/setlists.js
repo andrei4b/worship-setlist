@@ -97,6 +97,11 @@ function createSetlistsTab(container, ctx) {
     return sl.band ? `${weekday} · ${sl.band}` : weekday;
   }
 
+  // Text entries always start with "--" (e.g. "--Welcome & Announcements").
+  function withTextEntryPrefix(val) {
+    return val.startsWith('--') ? val : '--' + val;
+  }
+
   // Sunday/Tuesday get their own chip; every other weekday falls under "Alte zile".
   function dayChipForSetlist(sl) {
     const day = getSetlistDate(sl).getDay();
@@ -493,7 +498,7 @@ function createSetlistsTab(container, ctx) {
         el('button', { class: 'btn btn--primary btn--block', onclick: () => {
           const val = textInput.value.trim();
           if (!val) { toast('Text can\u2019t be empty', { variant: 'danger' }); return; }
-          item.text = val; closeSheet(); onSave();
+          item.text = withTextEntryPrefix(val); closeSheet(); onSave();
         }}, 'Save')
       );
       openSheet('Edit text entry', body, footer);
@@ -543,7 +548,7 @@ function createSetlistsTab(container, ctx) {
         el('button', { class: 'btn btn--primary btn--block', onclick: async () => {
           const val = textInput.value.trim();
           if (!val) { toast('Text can\u2019t be empty', { variant: 'danger' }); return; }
-          draft.items.push({ type: 'text', text: val });
+          draft.items.push({ type: 'text', text: withTextEntryPrefix(val) });
           closeSheet();
           await autoSave(draft);
           renderItems();
@@ -682,7 +687,7 @@ function createSetlistsTab(container, ctx) {
   // ── Clipboard export ───────────────────────────────────────────────────
   async function copySetlistText(setlist) {
     const lines = (setlist.items || []).map(item => {
-      if (item.type === 'text') return `--${item.text}`;
+      if (item.type === 'text') return withTextEntryPrefix(item.text || '');
       const song = getSongById(item.songId);
       if (!song) return '(song removed)';
       return `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
