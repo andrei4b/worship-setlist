@@ -44,7 +44,7 @@ function createSongsTab(container, ctx) {
         el('h1', { class: 'app-title' },
           el('span', { class: 'mark' }, '♪'),
           'Songs',
-          el('span', { class: 'song-count' }, `(${songs.length})`)
+          el('span', { class: 'title-count' }, `(${songs.length})`)
         ),
         el('button', { class: 'kebab-btn', title: 'More options', onclick: openSongsMenu }, '⋮')
       ),

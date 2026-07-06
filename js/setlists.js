@@ -110,7 +110,11 @@ function createSetlistsTab(container, ctx) {
 
     const header = el('div', { class: 'app-header' },
       el('div', { class: 'app-header-top' },
-        el('h1', { class: 'app-title' }, el('span', { class: 'mark' }, '☰'), 'Setlists'),
+        el('h1', { class: 'app-title' },
+          el('span', { class: 'mark' }, '☰'),
+          'Setlists',
+          el('span', { class: 'title-count' }, `(${setlists.length})`)
+        ),
         el('button', { class: 'kebab-btn', title: 'More options', onclick: openSetlistsMenu }, '⋮')
       ),
       el('div', { class: 'searchbar' },

@@ -126,7 +126,7 @@ a { color: var(--accent); }
   scrollbar-width: none;
 }
 .sort-row::-webkit-scrollbar { display: none; }
-.app-title .song-count {
+.app-title .title-count {
   font-family: var(--font-body);
   font-weight: 500;
   font-size: 15px;
@@ -584,7 +584,6 @@ a { color: var(--accent); }
   position: sticky;
   top: 0;
   z-index: 5;
-  border-bottom: 1px solid var(--line);
 }
 .detail-back-btn {
   border: none;
@@ -606,7 +605,6 @@ a { color: var(--accent); }
 /* ============ Detail header (title + weekday/band) ============ */
 .detail-header {
   padding: 4px 20px 16px;
-  border-bottom: 1px solid var(--line);
 }
 .detail-header-title {
   font-family: var(--font-display);
