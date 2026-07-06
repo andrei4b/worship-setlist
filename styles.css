@@ -747,7 +747,7 @@ a { color: var(--accent); }
 }
 .setlist-item-titleline {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
 }
 .setlist-item-title {
@@ -767,8 +767,15 @@ a { color: var(--accent); }
      without a little breathing room here. */
   padding-right: 4px;
 }
-.setlist-item-meta-group { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; }
-.setlist-item-inline-meta { font-size: 12.5px; color: var(--ink-soft); flex-shrink: 0; }
+.setlist-item-meta-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.setlist-item-inline-meta {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+  background: var(--paper-raised);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
 .setlist-item-meta { font-size: 12.5px; color: var(--ink-soft); display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
 
 .add-item-bar {
@@ -780,8 +787,6 @@ a { color: var(--accent); }
 .setlist-item-inline-meta.is-overridden {
   color: var(--accent-press);
   background: var(--accent-soft);
-  padding: 1px 6px;
-  border-radius: 999px;
 }
 
 /* ============ Song picker ============ */
