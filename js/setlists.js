@@ -290,8 +290,8 @@ function createSetlistsTab(container, ctx) {
 
     const body = el('div', null,
       formField('Date', dateInput),
-      formField('Setlist name', nameInput),
       sundayField,
+      formField('Setlist name', nameInput),
       formField('Band name', bandInput, 'Optional')
     );
     const footer = el('div', { class: 'sheet-footer' },
