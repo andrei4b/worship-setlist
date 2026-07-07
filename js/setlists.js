@@ -1,9 +1,15 @@
 /* setlists.js — Setlists tab: list + full detail page with drag reorder, auto-save */
 (function () {
 
+// Sunday setlists can be tagged AM/PM; these act as day-bucket values
+// distinct from plain Sunday (0), which now means "Sunday, no service set".
+const SUNDAY_AM = 'sunday-am';
+const SUNDAY_PM = 'sunday-pm';
+
 // Monday-first display order for the day-filter picker (data is still
-// indexed Date#getDay()-style, i.e. 0 = Sunday, under the hood).
-const DAY_PICKER_ORDER = [1, 2, 3, 4, 5, 6, 0];
+// indexed Date#getDay()-style, i.e. 0 = Sunday, under the hood) — Sunday's
+// AM/PM buckets sort right before the catch-all "Sunday, no service" one.
+const DAY_PICKER_ORDER = [1, 2, 3, 4, 5, 6, SUNDAY_AM, SUNDAY_PM, 0];
 
 // Sentinel band-filter value meaning "setlists with no band set", distinct
 // from null (no filter — show everything).
@@ -79,7 +85,7 @@ function createSetlistsTab(container, ctx) {
       const q = normalizeForSearch(query.trim());
       list = list.filter(sl => normalizeForSearch(sl.name).includes(q));
     }
-    if (dayFilter !== null) list = list.filter(sl => getSetlistDate(sl).getDay() === dayFilter);
+    if (dayFilter !== null) list = list.filter(sl => dayBucketForSetlist(sl) === dayFilter);
     if (bandFilter === NO_BAND) list = list.filter(sl => !sl.band);
     else if (bandFilter !== null) list = list.filter(sl => sl.band === bandFilter);
     list = [...list];
@@ -97,10 +103,28 @@ function createSetlistsTab(container, ctx) {
     return getSetlistDate(sl).getTime();
   }
 
+  // Day-filter bucket: Monday..Saturday are just their Date#getDay() index;
+  // Sunday splits into AM/PM when a service is set, or plain 0 otherwise.
+  function dayBucketForSetlist(sl) {
+    const day = getSetlistDate(sl).getDay();
+    if (day === 0 && sl.sundayService === 'AM') return SUNDAY_AM;
+    if (day === 0 && sl.sundayService === 'PM') return SUNDAY_PM;
+    return day;
+  }
+
+  function dayBucketLabel(bucket) {
+    if (bucket === SUNDAY_AM) return 'Duminică AM';
+    if (bucket === SUNDAY_PM) return 'Duminică PM';
+    return weekdayNames[bucket];
+  }
+
   // "<weekday>" or "<weekday> · <band>" — used for both the list card and
-  // the detail page header.
+  // the detail page header. Sunday setlists with a service picked show
+  // "Duminică AM"/"Duminică PM" instead of the plain weekday.
   function setlistSubtitle(sl) {
-    const weekday = weekdayNameFromJSDate(getSetlistDate(sl));
+    const date = getSetlistDate(sl);
+    let weekday = weekdayNameFromJSDate(date);
+    if (date.getDay() === 0 && sl.sundayService) weekday += ' ' + sl.sundayService;
     return sl.band ? `${weekday} · ${sl.band}` : weekday;
   }
 
@@ -121,7 +145,7 @@ function createSetlistsTab(container, ctx) {
   }
 
   function getAvailableDays() {
-    const present = new Set(setlists.map(sl => getSetlistDate(sl).getDay()));
+    const present = new Set(setlists.map(dayBucketForSetlist));
     return DAY_PICKER_ORDER.filter(d => present.has(d));
   }
 
@@ -149,7 +173,7 @@ function createSetlistsTab(container, ctx) {
         el('button', {
           class: 'chip-btn' + (dayFilter !== null ? ' is-active' : ''),
           onclick: openDayFilterPicker
-        }, (dayFilter !== null ? weekdayNames[dayFilter] : 'All days') + ' ▾'),
+        }, (dayFilter !== null ? dayBucketLabel(dayFilter) : 'All days') + ' ▾'),
         el('button', {
           class: 'chip-btn' + (bandFilter !== null ? ' is-active' : ''),
           onclick: openBandFilterPicker
@@ -185,7 +209,7 @@ function createSetlistsTab(container, ctx) {
       ...options.map(day => el('div', {
         class: 'picker-row' + (dayFilter === day ? ' is-selected' : ''),
         onclick: () => { dayFilter = day; closeSheet(); renderList(); }
-      }, el('div', { class: 'picker-row-title' }, day === null ? 'All days' : weekdayNames[day])))
+      }, el('div', { class: 'picker-row-title' }, day === null ? 'All days' : dayBucketLabel(day))))
     );
     openSheet('Filter by day', listEl, null);
   }
@@ -234,17 +258,40 @@ function createSetlistsTab(container, ctx) {
 
   // Shared date+name sheet for both creating and editing a setlist. Both
   // fields are mandatory — onSubmit only fires once each has a value.
-  function openSetlistFormSheet({ title, dateValue, nameValue, bandValue, submitLabel, onSubmit }) {
+  function openSetlistFormSheet({ title, dateValue, nameValue, bandValue, sundayServiceValue, submitLabel, onSubmit }) {
+    let sundayService = sundayServiceValue || null;
+
     const dateInput = el('input', {
       type: 'date',
       value: dateValue,
-      onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value); }
+      onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value); syncSundayField(); }
     });
     const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: nameValue });
     const bandInput = el('input', { type: 'text', placeholder: 'e.g. Youth Band', value: bandValue || '' });
+
+    const amBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'AM'; updateSundayButtons(); } }, 'AM');
+    const pmBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'PM'; updateSundayButtons(); } }, 'PM');
+    function updateSundayButtons() {
+      amBtn.classList.toggle('is-active', sundayService === 'AM');
+      pmBtn.classList.toggle('is-active', sundayService === 'PM');
+    }
+    const sundayField = formField('Service', el('div', { class: 'segmented-toggle' }, amBtn, pmBtn));
+
+    // Only relevant when the picked date is a Sunday — hidden otherwise.
+    // Defaults to AM the moment it becomes relevant, so a Sunday setlist
+    // is never left ambiguous without forcing an extra tap most of the time.
+    function syncSundayField() {
+      const isSunday = parseDateInput(dateInput.value).getDay() === 0;
+      sundayField.style.display = isSunday ? '' : 'none';
+      if (isSunday && !sundayService) sundayService = 'AM';
+      updateSundayButtons();
+    }
+    syncSundayField();
+
     const body = el('div', null,
       formField('Date', dateInput),
       formField('Setlist name', nameInput),
+      sundayField,
       formField('Band name', bandInput, 'Optional')
     );
     const footer = el('div', { class: 'sheet-footer' },
@@ -256,7 +303,9 @@ function createSetlistsTab(container, ctx) {
           const band = bandInput.value.trim();
           if (!date) { toast('Date is required', { variant: 'danger' }); return; }
           if (!name) { toast('Setlist name is required', { variant: 'danger' }); return; }
-          onSubmit({ date, name, band });
+          const isSunday = parseDateInput(date).getDay() === 0;
+          if (isSunday && !sundayService) { toast('Please select AM or PM', { variant: 'danger' }); return; }
+          onSubmit({ date, name, band, sundayService: isSunday ? sundayService : null });
         }
       }, submitLabel)
     );
@@ -270,8 +319,8 @@ function createSetlistsTab(container, ctx) {
       dateValue: todayStr,
       nameValue: setlistNameFromDate(todayStr),
       submitLabel: 'Create',
-      onSubmit: async ({ date, name, band }) => {
-        const sl = { id: DB.uid(), name, date, band, items: [], createdAt: Date.now(), updatedAt: Date.now() };
+      onSubmit: async ({ date, name, band, sundayService }) => {
+        const sl = { id: DB.uid(), name, date, band, sundayService, items: [], createdAt: Date.now(), updatedAt: Date.now() };
         await DB.saveSetlist(sl);
         setlists.push(sl);
         closeSheet(true, true);
@@ -305,11 +354,13 @@ function createSetlistsTab(container, ctx) {
         dateValue: draft.date || FileUtil.dateStamp(),
         nameValue: draft.name || '',
         bandValue: draft.band || '',
+        sundayServiceValue: draft.sundayService || null,
         submitLabel: 'Save',
-        onSubmit: async ({ date, name, band }) => {
+        onSubmit: async ({ date, name, band, sundayService }) => {
           draft.date = date;
           draft.name = name;
           draft.band = band;
+          draft.sundayService = sundayService;
           titleEl.textContent = draft.name;
           subEl.textContent = setlistSubtitle(draft);
           closeSheet();

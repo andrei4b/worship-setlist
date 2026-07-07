@@ -322,16 +322,36 @@ function createSongsTab(container, ctx) {
 
     function openNewSetlistPrompt() {
       const todayStr = FileUtil.dateStamp();
+      let sundayService = null;
+
       const dateInput = el('input', {
         type: 'date',
         value: todayStr,
-        onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value || todayStr); }
+        onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value || todayStr); syncSundayField(); }
       });
       const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: setlistNameFromDate(todayStr) });
       const bandInput = el('input', { type: 'text', placeholder: 'e.g. Youth Band' });
+
+      const amBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'AM'; updateSundayButtons(); } }, 'AM');
+      const pmBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'PM'; updateSundayButtons(); } }, 'PM');
+      function updateSundayButtons() {
+        amBtn.classList.toggle('is-active', sundayService === 'AM');
+        pmBtn.classList.toggle('is-active', sundayService === 'PM');
+      }
+      const sundayField = formField('Service', el('div', { class: 'segmented-toggle' }, amBtn, pmBtn));
+
+      function syncSundayField() {
+        const isSunday = parseDateInput(dateInput.value || todayStr).getDay() === 0;
+        sundayField.style.display = isSunday ? '' : 'none';
+        if (isSunday && !sundayService) sundayService = 'AM';
+        updateSundayButtons();
+      }
+      syncSundayField();
+
       const body = el('div', null,
         formField('Date', dateInput),
         formField('Setlist name', nameInput),
+        sundayField,
         formField('Band name', bandInput, 'Optional')
       );
       const footer = el('div', { class: 'sheet-footer' },
@@ -343,7 +363,9 @@ function createSongsTab(container, ctx) {
             const band = bandInput.value.trim();
             if (!date) { toast('Date is required', { variant: 'danger' }); return; }
             if (!name) { toast('Setlist name is required', { variant: 'danger' }); return; }
-            addToSetlist({ id: DB.uid(), name, date, band, items: [], createdAt: Date.now(), updatedAt: Date.now() });
+            const isSunday = parseDateInput(date).getDay() === 0;
+            if (isSunday && !sundayService) { toast('Please select AM or PM', { variant: 'danger' }); return; }
+            addToSetlist({ id: DB.uid(), name, date, band, sundayService: isSunday ? sundayService : null, items: [], createdAt: Date.now(), updatedAt: Date.now() });
           }
         }, 'Create & Add')
       );
