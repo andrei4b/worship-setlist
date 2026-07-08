@@ -19,6 +19,14 @@ function setlistSortKey(sl) {
   return date.getTime();
 }
 
+// Matches setlists.js's own canManage — admins can add to any setlist,
+// everyone else only their own. Keeps the "add to setlist" picker from
+// listing setlists a tap would just silently fail to write to.
+function canManageSetlist(sl) {
+  const user = Auth.currentUser();
+  return Auth.isAdmin() || !!(user && sl.ownerId === user.uid);
+}
+
 function createSongsTab(container, ctx) {
   let songs = [];
   let query = '';
@@ -313,13 +321,18 @@ function createSongsTab(container, ctx) {
 
   // ---- Add to setlist ----
   async function openAddToSetlistSheet(song) {
-    const setlists = (await DB.getSetlists()).sort((a, b) => setlistSortKey(b) - setlistSortKey(a));
+    const allSetlists = (await DB.getSetlists()).sort((a, b) => setlistSortKey(b) - setlistSortKey(a));
+    // Only setlists you can actually write to — showing others' setlists
+    // here would just be a tap that silently fails against the rules.
+    const setlists = allSetlists.filter(canManageSetlist);
 
     async function addToSetlist(sl) {
       sl.items = sl.items || [];
       sl.items.push({ type: 'song', songId: song.id });
       sl.updatedAt = Date.now();
-      await DB.saveSetlist(sl);
+      try {
+        await DB.saveSetlist(sl);
+      } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
       if (ctx.refreshSetlists) ctx.refreshSetlists();
       closeSheet(true);
       toast(`Added to "${sl.name || 'Untitled setlist'}"`);
