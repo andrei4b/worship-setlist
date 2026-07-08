@@ -1,11 +1,13 @@
 /* service-worker.js — offline support (network-first for our own code) */
 
-const CACHE_NAME = 'worship-planner-v4';
+const CACHE_NAME = 'worship-planner-v5';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './manifest.webmanifest',
+  './js/firebase-config.js',
+  './js/auth.js',
   './js/db.js',
   './js/utils.js',
   './js/songs.js',
@@ -15,6 +17,24 @@ const ASSETS = [
   './icons/icon-512.png',
   './icons/icon-maskable-512.png'
 ];
+
+// Firebase/Google API traffic must never be served from (or written to) our
+// cache — auth tokens and live Firestore data are actively wrong if stale,
+// unlike the "immutable once fetched" assets the cache-first branch below is
+// for. Most of this traffic is POST/WebSocket and already skips this handler
+// via the method check, but some (auth redirects, long-polling fallbacks)
+// is GET and would otherwise fall into cache-first by default.
+const BYPASS_HOSTS = [
+  'firestore.googleapis.com',
+  'firebaseio.com',
+  'identitytoolkit.googleapis.com',
+  'securetoken.googleapis.com',
+  'www.googleapis.com',
+  'apis.google.com'
+];
+function isBypassHost(hostname) {
+  return BYPASS_HOSTS.some(h => hostname === h || hostname.endsWith('.' + h));
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -36,7 +56,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
 
-  const isSameOrigin = new URL(request.url).origin === self.location.origin;
+  const url = new URL(request.url);
+  if (isBypassHost(url.hostname)) return; // let the browser handle it, untouched
+
+  const isSameOrigin = url.origin === self.location.origin;
 
   // Network-first for navigation and our own app code (js/css/html/manifest),
   // falling back to cache when offline. A stale cache-first strategy here is
