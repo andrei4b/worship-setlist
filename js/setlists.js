@@ -489,7 +489,9 @@ function createSetlistsTab(container, ctx) {
         : el('div', { class: 'setlist-item-body' }, titleLine);
 
       const swipeAction = el('div', { class: 'setlist-item-swipe-action' });
-      const rowContent = el('div', { class: 'setlist-item-row-content' },
+      // Without the drag handle, the row loses its usual left-side spacing —
+      // add it back so read-only rows don't sit flush against the edge.
+      const rowContent = el('div', { class: 'setlist-item-row-content' + (editable ? '' : ' is-readonly') },
         editable ? el('div', { class: 'drag-handle', title: 'Drag to reorder' },
           el('span', { class: 'drag-dots' }, '⠿')
         ) : null,

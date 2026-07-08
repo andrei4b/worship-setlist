@@ -621,7 +621,7 @@ a { color: var(--accent); }
 }
 .detail-topbar-actions {
   display: flex;
-  gap: 2px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -758,6 +758,9 @@ a { color: var(--accent); }
   background: var(--paper);
   position: relative;
 }
+/* No drag handle to provide left-side spacing on a read-only setlist —
+   add it back directly so the row doesn't sit flush against the edge. */
+.setlist-item-row-content.is-readonly { padding-left: 20px; }
 .setlist-item-row-content.is-swipe-animating { transition: transform 0.2s ease; }
 .setlist-item-body {
   flex: 1;
