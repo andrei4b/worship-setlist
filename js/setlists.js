@@ -50,6 +50,13 @@ function createSetlistsTab(container, ctx) {
     return Auth.isAdmin() || !!(user && sl.ownerId === user.uid);
   }
 
+  // Default "band" for a newly-created setlist — the creator's own Google
+  // account name, so a setlist is always attributed to someone by default.
+  function defaultBandName() {
+    const user = Auth.currentUser();
+    return (user && (user.displayName || user.email)) || '';
+  }
+
   // ── Auto-save ──────────────────────────────────────────────────────────
   async function autoSave(setlist) {
     setlist.updatedAt = Date.now();
@@ -271,7 +278,7 @@ function createSetlistsTab(container, ctx) {
 
   // Shared date+name sheet for both creating and editing a setlist. Both
   // fields are mandatory — onSubmit only fires once each has a value.
-  function openSetlistFormSheet({ title, dateValue, nameValue, bandValue, sundayServiceValue, submitLabel, onSubmit }) {
+  function openSetlistFormSheet({ title, dateValue, nameValue, bandValue, bandLocked, sundayServiceValue, submitLabel, onSubmit }) {
     let sundayService = sundayServiceValue || null;
 
     const dateInput = el('input', {
@@ -280,7 +287,13 @@ function createSetlistsTab(container, ctx) {
       onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value); syncSundayField(); }
     });
     const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: nameValue });
-    const bandInput = el('input', { type: 'text', placeholder: 'e.g. Youth Band', value: bandValue || '' });
+    // Regular users' setlists are always attributed to themselves — locked
+    // to their own Google name rather than editable. Admins can still see/
+    // change it, just pre-filled with their own name as a starting point.
+    const bandInput = el('input', {
+      type: 'text', placeholder: 'e.g. Youth Band', value: bandValue || '',
+      disabled: bandLocked || undefined
+    });
 
     const amBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'AM'; updateSundayButtons(); } }, 'AM');
     const pmBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'PM'; updateSundayButtons(); } }, 'PM');
@@ -305,7 +318,7 @@ function createSetlistsTab(container, ctx) {
       formField('Date', dateInput),
       sundayField,
       formField('Setlist name', nameInput),
-      formField('Band name', bandInput, 'Optional')
+      formField('Band name', bandInput, bandLocked ? 'Setlists are attributed to your account' : 'Optional')
     );
     const footer = el('div', { class: 'sheet-footer' },
       el('button', {
@@ -331,6 +344,8 @@ function createSetlistsTab(container, ctx) {
       title: 'New setlist',
       dateValue: todayStr,
       nameValue: setlistNameFromDate(todayStr),
+      bandValue: defaultBandName(),
+      bandLocked: !Auth.isAdmin(),
       submitLabel: 'Create',
       onSubmit: async ({ date, name, band, sundayService }) => {
         const sl = { id: DB.uid(), name, date, band, sundayService, items: [], createdAt: Date.now(), updatedAt: Date.now() };

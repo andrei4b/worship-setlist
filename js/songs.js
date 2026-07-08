@@ -348,7 +348,12 @@ function createSongsTab(container, ctx) {
         onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value || todayStr); syncSundayField(); }
       });
       const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: setlistNameFromDate(todayStr) });
-      const bandInput = el('input', { type: 'text', placeholder: 'e.g. Youth Band' });
+      // Regular users' setlists are always attributed to themselves — locked
+      // to their own Google name rather than editable. Admins can still see/
+      // change it, just pre-filled with their own name as a starting point.
+      const bandLocked = !Auth.isAdmin();
+      const defaultBand = (Auth.currentUser() && (Auth.currentUser().displayName || Auth.currentUser().email)) || '';
+      const bandInput = el('input', { type: 'text', placeholder: 'e.g. Youth Band', value: defaultBand, disabled: bandLocked || undefined });
 
       const amBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'AM'; updateSundayButtons(); } }, 'AM');
       const pmBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'PM'; updateSundayButtons(); } }, 'PM');
@@ -370,7 +375,7 @@ function createSongsTab(container, ctx) {
         formField('Date', dateInput),
         sundayField,
         formField('Setlist name', nameInput),
-        formField('Band name', bandInput, 'Optional')
+        formField('Band name', bandInput, bandLocked ? 'Setlists are attributed to your account' : 'Optional')
       );
       const footer = el('div', { class: 'sheet-footer' },
         el('button', {
