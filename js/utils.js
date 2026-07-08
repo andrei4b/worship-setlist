@@ -55,6 +55,16 @@ function toast(message, opts = {}) {
   }, opts.duration || 2200);
 }
 
+// ---- Cloud write error -> friendly message ----
+// Firestore rejects writes the UI didn't manage to hide/disable in time
+// (stale state, a race with a role change, etc.) with a generic
+// "permission-denied" — surface that as a clear message instead of raw
+// Firestore error text.
+function describeDbError(err) {
+  if (err && err.code === 'permission-denied') return 'You don’t have permission to do that';
+  return (err && err.message) || 'Something went wrong';
+}
+
 // ---- Debounce ----
 function debounce(fn, wait) {
   let timer;
@@ -155,7 +165,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput, describeDbError };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 

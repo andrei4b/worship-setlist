@@ -1,7 +1,7 @@
 /* songs.js — Songs tab: list, search, sort, CRUD, import/export */
 (function () {
 
-const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput } = UI;
+const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput, describeDbError } = UI;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
@@ -84,8 +84,10 @@ function createSongsTab(container, ctx) {
     const scrubberWrap = el('div', { class: 'index-scrubber-wrap' });
     root.appendChild(scrubberWrap);
 
-    // Single FAB: add song
-    root.appendChild(el('button', { class: 'fab', title: 'Add song', onclick: () => openSongForm(null) }, '+'));
+    // Single FAB: add song — admin-only, songs are curated by admins.
+    if (Auth.isAdmin()) {
+      root.appendChild(el('button', { class: 'fab', title: 'Add song', onclick: () => openSongForm(null) }, '+'));
+    }
 
     function renderList() {
       const list = getFiltered();
@@ -262,7 +264,10 @@ function createSongsTab(container, ctx) {
       }
       if (!isHorizontal) return false;
       cardEl.classList.add('is-swiping');
-      dx = Math.max(-MAX_REVEAL, Math.min(MAX_REVEAL, rawDx));
+      // Left-swipe reveals "Edit", which only admins can do — clamp it away
+      // entirely for everyone else so the row simply doesn't swipe that way.
+      const minReveal = Auth.isAdmin() ? -MAX_REVEAL : 0;
+      dx = Math.max(minReveal, Math.min(MAX_REVEAL, rawDx));
       if (Math.abs(dx) > 4) swiped = true;
       updateAction(dx);
       setTransform(dx);
@@ -432,7 +437,9 @@ function createSongsTab(container, ctx) {
         class: 'btn btn--danger',
         onclick: async () => {
           if (!confirm(`Delete "${draft.title}"? This can't be undone.`)) return;
-          await DB.deleteSong(draft.id);
+          try {
+            await DB.deleteSong(draft.id);
+          } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
           songs = songs.filter(s => s.id !== draft.id);
           closeSheet();
           render();
@@ -453,7 +460,9 @@ function createSongsTab(container, ctx) {
             pace: paceSelect.value,
             createdAt: draft.createdAt || Date.now()
           };
-          await DB.saveSong(toSave);
+          try {
+            await DB.saveSong(toSave);
+          } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
           const idx = songs.findIndex(s => s.id === toSave.id);
           if (idx >= 0) songs[idx] = toSave; else songs.push(toSave);
           closeSheet();
@@ -469,9 +478,9 @@ function createSongsTab(container, ctx) {
   // ---- 3-dot menu ----
   function openSongsMenu() {
     openActionMenu([
-      { icon: '⬇', label: 'Import songs', onClick: openImportSheet },
+      ...(Auth.isAdmin() ? [{ icon: '⬇', label: 'Import songs', onClick: openImportSheet }] : []),
       { icon: '⬆', label: 'Export all songs', onClick: exportSongsJSON },
-      { icon: '🗑', label: 'Delete all songs', danger: true, onClick: confirmDeleteAllSongs },
+      ...(Auth.isAdmin() ? [{ icon: '🗑', label: 'Delete all songs', danger: true, onClick: confirmDeleteAllSongs }] : []),
       ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
   }
@@ -479,7 +488,9 @@ function createSongsTab(container, ctx) {
   async function confirmDeleteAllSongs() {
     if (!songs.length) { toast('No songs to delete', { variant: 'danger' }); return; }
     if (!confirm(`Delete all ${songs.length} song${songs.length === 1 ? '' : 's'}? This can't be undone.`)) return;
-    await DB.clearSongs();
+    try {
+      await DB.clearSongs();
+    } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
     songs = [];
     render();
     toast('All songs deleted');
@@ -505,7 +516,8 @@ function createSongsTab(container, ctx) {
         toast(`Imported ${imported.length} song${imported.length === 1 ? '' : 's'}`);
       } catch (err) {
         console.error(err);
-        toast('Could not read that file', { variant: 'danger' });
+        const msg = err && err.code === 'permission-denied' ? describeDbError(err) : 'Could not read that file';
+        toast(msg, { variant: 'danger' });
       }
     });
 

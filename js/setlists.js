@@ -18,7 +18,7 @@ const NO_BAND = '__no_band__';
 const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError } = UI;
 
   let setlists = [];
   let query = '';
@@ -42,10 +42,23 @@ function createSetlistsTab(container, ctx) {
     return ctx.getSongs().find(s => s.id === id) || null;
   }
 
+  // Admins can manage any setlist; everyone else only their own. A setlist
+  // saved before ownership existed (ownerId missing) has no owner to match,
+  // so only an admin can touch it until it's re-saved and gets one stamped.
+  function canManage(sl) {
+    const user = Auth.currentUser();
+    return Auth.isAdmin() || !!(user && sl.ownerId === user.uid);
+  }
+
   // ── Auto-save ──────────────────────────────────────────────────────────
   async function autoSave(setlist) {
     setlist.updatedAt = Date.now();
-    await DB.saveSetlist(setlist);
+    try {
+      await DB.saveSetlist(setlist);
+    } catch (err) {
+      toast(describeDbError(err), { variant: 'danger' });
+      throw err;
+    }
     const idx = setlists.findIndex(s => s.id === setlist.id);
     if (idx >= 0) setlists[idx] = setlist; else setlists.push(setlist);
   }
@@ -321,7 +334,9 @@ function createSetlistsTab(container, ctx) {
       submitLabel: 'Create',
       onSubmit: async ({ date, name, band, sundayService }) => {
         const sl = { id: DB.uid(), name, date, band, sundayService, items: [], createdAt: Date.now(), updatedAt: Date.now() };
-        await DB.saveSetlist(sl);
+        try {
+          await DB.saveSetlist(sl);
+        } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
         setlists.push(sl);
         closeSheet(true, true);
         showDetail(sl, { replace: true });
@@ -343,6 +358,7 @@ function createSetlistsTab(container, ctx) {
 
     // Working copy
     const draft = { ...setlist, items: (setlist.items || []).map(i => ({ ...i })) };
+    const editable = canManage(draft);
 
     // ---- Header (title + weekday/band subtitle) ----
     const titleEl = el('h2', { class: 'detail-header-title' }, draft.name || 'Untitled setlist');
@@ -398,11 +414,12 @@ function createSetlistsTab(container, ctx) {
           title: 'Share setlist',
           onclick: () => shareSetlist(draft)
         }, el('span', { html: SHARE_ICON })),
-        el('button', {
+        // Nothing in this menu applies to a setlist you can't manage.
+        editable ? el('button', {
           class: 'kebab-btn',
           title: 'More options',
           onclick: () => openDetailMenu(draft, openEditSetlistSheet)
-        }, '⋮')
+        }, '⋮') : null
       )
     );
     detailView.appendChild(topBar);
@@ -414,12 +431,14 @@ function createSetlistsTab(container, ctx) {
     const itemsWrap = el('div', { class: 'detail-items' });
     detailView.appendChild(itemsWrap);
 
-    // ---- Add bar ----
-    const addBar = el('div', { class: 'detail-add-bar' },
-      el('button', { class: 'btn btn--accent-soft', style: 'flex:1', onclick: openAddSongPicker }, '+ Song'),
-      el('button', { class: 'btn btn--secondary', style: 'flex:1', onclick: openAddTextEntry }, '+ Text entry')
-    );
-    detailView.appendChild(addBar);
+    // ---- Add bar ---- (view-only for a setlist you don't own/manage)
+    if (editable) {
+      const addBar = el('div', { class: 'detail-add-bar' },
+        el('button', { class: 'btn btn--accent-soft', style: 'flex:1', onclick: openAddSongPicker }, '+ Song'),
+        el('button', { class: 'btn btn--secondary', style: 'flex:1', onclick: openAddTextEntry }, '+ Text entry')
+      );
+      detailView.appendChild(addBar);
+    }
 
     renderItems();
 
@@ -428,11 +447,11 @@ function createSetlistsTab(container, ctx) {
       clear(itemsWrap);
       if (!draft.items.length) {
         itemsWrap.appendChild(el('p', { class: 'detail-empty', style: 'padding:24px 20px; color:var(--ink-faint); font-size:14px;' },
-          'No items yet. Add a song or a text entry below.'));
+          editable ? 'No items yet. Add a song or a text entry below.' : 'No items yet.'));
         return;
       }
       draft.items.forEach((item, idx) => itemsWrap.appendChild(buildItemRow(item, idx)));
-      initDragSort(itemsWrap, draft, async () => { await autoSave(draft); renderItems(); });
+      if (editable) initDragSort(itemsWrap, draft, async () => { await autoSave(draft); renderItems(); });
     }
 
     function buildItemRow(item, idx) {
@@ -471,9 +490,9 @@ function createSetlistsTab(container, ctx) {
 
       const swipeAction = el('div', { class: 'setlist-item-swipe-action' });
       const rowContent = el('div', { class: 'setlist-item-row-content' },
-        el('div', { class: 'drag-handle', title: 'Drag to reorder' },
+        editable ? el('div', { class: 'drag-handle', title: 'Drag to reorder' },
           el('span', { class: 'drag-dots' }, '⠿')
-        ),
+        ) : null,
         body
       );
       const swipeWrap = el('div', { class: 'setlist-item-swipe-wrap' }, swipeAction, rowContent);
@@ -481,8 +500,8 @@ function createSetlistsTab(container, ctx) {
       const row = el('div', { class: 'drag-item', 'data-idx': String(idx) }, swipeWrap);
       // Swipe is detected from touches on the body (not the drag handle, which
       // has its own vertical reorder gesture), but the whole row — handle
-      // included — slides together.
-      attachItemSwipeGestures(body, rowContent, swipeAction, idx);
+      // included — slides together. Not available on a setlist you can only view.
+      if (editable) attachItemSwipeGestures(body, rowContent, swipeAction, idx);
       return row;
     }
 
@@ -869,7 +888,8 @@ function createSetlistsTab(container, ctx) {
     openActionMenu([
       { icon: '⬇', label: 'Import setlists', onClick: openSetlistImportSheet },
       { icon: '⬆', label: 'Export all setlists', onClick: exportAllSetlists },
-      { icon: '🗑', label: 'Delete all setlists', danger: true, onClick: confirmDeleteAllSetlists },
+      // Cuts across ownership, so it's admin-only rather than per-owner.
+      ...(Auth.isAdmin() ? [{ icon: '🗑', label: 'Delete all setlists', danger: true, onClick: confirmDeleteAllSetlists }] : []),
       ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
   }
@@ -877,7 +897,9 @@ function createSetlistsTab(container, ctx) {
   async function confirmDeleteAllSetlists() {
     if (!setlists.length) { toast('No setlists to delete', { variant: 'danger' }); return; }
     if (!confirm(`Delete all ${setlists.length} setlist${setlists.length === 1 ? '' : 's'}? This can't be undone.`)) return;
-    await DB.clearSetlists();
+    try {
+      await DB.clearSetlists();
+    } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
     setlists = [];
     renderList();
     toast('All setlists deleted');
@@ -907,7 +929,8 @@ function createSetlistsTab(container, ctx) {
           (result.songs ? ` + ${result.songs} song${result.songs === 1 ? '' : 's'}` : ''));
       } catch (err) {
         console.error(err);
-        toast('Could not read that file', { variant: 'danger' });
+        const msg = err && err.code === 'permission-denied' ? describeDbError(err) : 'Could not read that file';
+        toast(msg, { variant: 'danger' });
       }
     });
 
@@ -924,7 +947,9 @@ function createSetlistsTab(container, ctx) {
 
   async function deleteSetlistFromDetail(draft) {
     if (!confirm(`Delete "${draft.name || 'this setlist'}"? This can't be undone.`)) return;
-    await DB.deleteSetlist(draft.id);
+    try {
+      await DB.deleteSetlist(draft.id);
+    } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
     setlists = setlists.filter(s => s.id !== draft.id);
     window.setPageBackHandler(null);
     window.silentHistoryBack();

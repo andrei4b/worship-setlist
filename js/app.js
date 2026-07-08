@@ -272,9 +272,51 @@ function renderJoinScreen(appRoot) {
 // openSetlistsMenu). Admins additionally get "Invite people".
 function accountMenuItems() {
   const items = [];
-  if (Auth.isAdmin()) items.push({ icon: '✉', label: 'Invite people', onClick: showInviteCode });
+  if (Auth.isAdmin()) {
+    items.push({ icon: '✉', label: 'Invite people', onClick: showInviteCode });
+    items.push({ icon: '👥', label: 'Manage members', onClick: showMembers });
+  }
   items.push({ icon: '⎋', label: 'Sign out', onClick: () => Auth.signOut() });
   return items;
+}
+
+async function showMembers() {
+  let members;
+  try { members = await Auth.listGroupMembers(); }
+  catch (err) { UI.toast(err.message || 'Could not load members', { variant: 'danger' }); return; }
+
+  const me = Auth.currentUser();
+  const rows = members.map(m => {
+    const label = m.displayName || m.email || m.uid;
+    const roleBtn = $el('button', { class: 'btn btn--secondary btn--sm' }, m.role === 'admin' ? 'Admin ▾' : 'User ▾');
+    roleBtn.addEventListener('click', async () => {
+      const nextRole = m.role === 'admin' ? 'user' : 'admin';
+      if (m.uid === me.uid && nextRole === 'user') {
+        const hasOtherAdmin = members.some(x => x.uid !== me.uid && x.role === 'admin');
+        if (!hasOtherAdmin) { UI.toast('You’re the only admin — promote someone else first', { variant: 'danger' }); return; }
+        if (!confirm('Remove your own admin access?')) return;
+      }
+      roleBtn.disabled = true;
+      try {
+        await Auth.setMemberRole(m.uid, nextRole);
+        closeSheet();
+        UI.toast('Updated ' + label);
+        showMembers();
+      } catch (err) {
+        UI.toast(err.message || 'Could not update role', { variant: 'danger' });
+        roleBtn.disabled = false;
+      }
+    });
+    return $el('div', { class: 'picker-row' },
+      $el('div', null,
+        $el('div', { class: 'picker-row-title' }, label),
+        $el('div', { class: 'picker-row-meta' }, m.email || '')
+      ),
+      roleBtn
+    );
+  });
+
+  openSheet('Manage members', $el('div', { class: 'picker-list' }, ...rows), null);
 }
 
 async function showInviteCode() {

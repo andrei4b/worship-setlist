@@ -132,10 +132,28 @@ function _genInviteCode() {
   return s;
 }
 
+// Admin-only: every profile in the current group, for the "Manage members"
+// / promote-to-admin screen.
+async function listGroupMembers() {
+  const groupId = currentGroupId();
+  if (!groupId) return [];
+  const snap = await fs.collection('users').where('groupId', '==', groupId).get();
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+// Admin-only: flip another (or your own) member's role. The Firestore rule
+// only allows this update to touch the role field.
+async function setMemberRole(uid, role) {
+  if (!isAdmin()) throw new Error('Only admins can change roles');
+  await fs.collection('users').doc(uid).update({ role });
+  if (uid === _fbUser.uid) await refreshProfile();
+}
+
 window.Auth = {
   ready, onChange, currentUser, isAdmin, currentGroupId,
   signInWithGoogle, signOut, refreshProfile,
-  createGroup, redeemInvite, createInvite
+  createGroup, redeemInvite, createInvite,
+  listGroupMembers, setMemberRole
 };
 
 })();
