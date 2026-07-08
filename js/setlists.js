@@ -18,7 +18,7 @@ const NO_BAND = '__no_band__';
 const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive } = UI;
 
   let setlists = [];
   let query = '';
@@ -896,15 +896,21 @@ function createSetlistsTab(container, ctx) {
     ]);
   }
 
-  async function confirmDeleteAllSetlists() {
+  function confirmDeleteAllSetlists() {
     if (!setlists.length) { toast('No setlists to delete', { variant: 'danger' }); return; }
-    if (!confirm(`Delete all ${setlists.length} setlist${setlists.length === 1 ? '' : 's'}? This can't be undone.`)) return;
-    try {
-      await DB.clearSetlists();
-    } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
-    setlists = [];
-    renderList();
-    toast('All setlists deleted');
+    confirmDestructive({
+      title: 'Delete all setlists',
+      message: `This deletes all ${setlists.length} setlist${setlists.length === 1 ? '' : 's'} for the whole group, including ones other people created — everyone loses access, not just you. This can’t be undone.`,
+      confirmWord: 'DELETE',
+      onConfirm: async () => {
+        try {
+          await DB.clearSetlists();
+        } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
+        setlists = [];
+        renderList();
+        toast('All setlists deleted');
+      }
+    });
   }
 
   function exportAllSetlists() {

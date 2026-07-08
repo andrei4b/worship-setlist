@@ -1,7 +1,7 @@
 /* songs.js — Songs tab: list, search, sort, CRUD, import/export */
 (function () {
 
-const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput, describeDbError } = UI;
+const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput, describeDbError, confirmDestructive } = UI;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
@@ -498,15 +498,21 @@ function createSongsTab(container, ctx) {
     ]);
   }
 
-  async function confirmDeleteAllSongs() {
+  function confirmDeleteAllSongs() {
     if (!songs.length) { toast('No songs to delete', { variant: 'danger' }); return; }
-    if (!confirm(`Delete all ${songs.length} song${songs.length === 1 ? '' : 's'}? This can't be undone.`)) return;
-    try {
-      await DB.clearSongs();
-    } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
-    songs = [];
-    render();
-    toast('All songs deleted');
+    confirmDestructive({
+      title: 'Delete all songs',
+      message: `This deletes all ${songs.length} song${songs.length === 1 ? '' : 's'} for the whole group — everyone loses access, not just you. This can’t be undone.`,
+      confirmWord: 'DELETE',
+      onConfirm: async () => {
+        try {
+          await DB.clearSongs();
+        } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
+        songs = [];
+        render();
+        toast('All songs deleted');
+      }
+    });
   }
 
   // ---- Import ----

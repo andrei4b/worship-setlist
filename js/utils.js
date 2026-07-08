@@ -65,6 +65,33 @@ function describeDbError(err) {
   return (err && err.message) || 'Something went wrong';
 }
 
+// ---- Stronger confirmation for group-wide destructive actions ----
+// A plain confirm() is easy to reflexively click through, which matters more
+// now that "delete all" wipes shared data for the whole group instead of
+// just one device's local copy. Requires typing an exact word before the
+// action can run. Depends on window.openSheet/closeSheet (app.js), called
+// well after boot so load order doesn't matter.
+function confirmDestructive({ title, message, confirmWord, onConfirm }) {
+  const word = confirmWord || 'DELETE';
+  const input = el('input', { type: 'text', placeholder: word, autocapitalize: 'characters' });
+  const btn = el('button', { class: 'btn btn--danger btn--block', disabled: true }, 'Delete');
+  input.addEventListener('input', () => {
+    btn.disabled = input.value.trim().toUpperCase() !== word;
+  });
+  btn.addEventListener('click', () => {
+    window.closeSheet();
+    onConfirm();
+  });
+  const body = el('div', null,
+    el('p', { class: 'field-hint', style: 'margin-bottom:14px' }, message),
+    el('div', { class: 'field' },
+      el('label', null, `Type "${word}" to confirm`),
+      input
+    )
+  );
+  window.openSheet(title, body, el('div', { class: 'sheet-footer' }, btn));
+}
+
 // ---- Debounce ----
 function debounce(fn, wait) {
   let timer;
@@ -165,7 +192,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput, describeDbError };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput, describeDbError, confirmDestructive };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 
