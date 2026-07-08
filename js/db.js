@@ -1,100 +1,116 @@
-/* db.js — minimal promise-based IndexedDB layer. No external deps. */
+/* db.js — Firestore-backed storage layer (previously IndexedDB).
+ *
+ * window.DB keeps the exact same method names/signatures it always has, so
+ * songs.js/setlists.js don't need to change how they call storage — every
+ * read is scoped to the signed-in user's group, and every write is stamped
+ * with groupId (and ownerId/createdBy where relevant) automatically, using
+ * window.Auth (loaded before this file — see index.html).
+ *
+ * Note: unlike the old IndexedDB layer, saveSong/saveSetlist/bulkSaveSongs
+ * mutate the object(s) passed in (adding groupId/ownerId/createdBy) before
+ * writing. No current caller relies on the object staying unmutated, and
+ * the UI permission-gating work needs sl.ownerId visible on in-memory
+ * setlists right after a save, not just after a re-fetch.
+ */
 (function () {
 
-const DB_NAME = 'worship-planner';
-const DB_VERSION = 1;
+const fs = firebase.firestore();
 
-let _dbPromise = null;
-
-function openDB() {
-  if (_dbPromise) return _dbPromise;
-  _dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-
-      if (!db.objectStoreNames.contains('songs')) {
-        const songs = db.createObjectStore('songs', { keyPath: 'id' });
-        songs.createIndex('title', 'title', { unique: false });
-        songs.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-
-      if (!db.objectStoreNames.contains('setlists')) {
-        const setlists = db.createObjectStore('setlists', { keyPath: 'id' });
-        setlists.createIndex('name', 'name', { unique: false });
-        setlists.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-    };
-
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-  return _dbPromise;
+function requireGroup() {
+  const groupId = Auth.currentGroupId();
+  if (!groupId) throw new Error('Not in a group yet');
+  return groupId;
 }
 
-function tx(storeName, mode) {
-  return openDB().then(db => db.transaction(storeName, mode).objectStore(storeName));
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
-function reqToPromise(req) {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+async function queryAll(collectionName) {
+  const groupId = requireGroup();
+  const snap = await fs.collection(collectionName).where('groupId', '==', groupId).get();
+  return snap.docs.map(d => d.data());
 }
 
-const Store = {
-  async all(storeName) {
-    const store = await tx(storeName, 'readonly');
-    return reqToPromise(store.getAll());
-  },
-  async get(storeName, id) {
-    const store = await tx(storeName, 'readonly');
-    return reqToPromise(store.get(id));
-  },
-  async put(storeName, item) {
-    const store = await tx(storeName, 'readwrite');
-    await reqToPromise(store.put(item));
-    return item;
-  },
-  async bulkPut(storeName, items) {
-    const store = await tx(storeName, 'readwrite');
-    for (const item of items) store.put(item);
-    return new Promise((resolve, reject) => {
-      store.transaction.oncomplete = () => resolve(items);
-      store.transaction.onerror = () => reject(store.transaction.error);
+async function getOne(collectionName, id) {
+  const doc = await fs.collection(collectionName).doc(id).get();
+  return doc.exists ? doc.data() : undefined;
+}
+
+async function putOne(collectionName, item) {
+  item.groupId = requireGroup();
+  await fs.collection(collectionName).doc(item.id).set(item);
+  return item;
+}
+
+async function bulkPut(collectionName, items) {
+  const groupId = requireGroup();
+  for (const batchItems of chunk(items, 400)) {
+    const batch = fs.batch();
+    batchItems.forEach(item => {
+      item.groupId = groupId;
+      batch.set(fs.collection(collectionName).doc(item.id), item);
     });
-  },
-  async delete(storeName, id) {
-    const store = await tx(storeName, 'readwrite');
-    await reqToPromise(store.delete(id));
-  },
-  async clear(storeName) {
-    const store = await tx(storeName, 'readwrite');
-    await reqToPromise(store.clear());
+    await batch.commit();
   }
-};
+  return items;
+}
+
+async function deleteOne(collectionName, id) {
+  await fs.collection(collectionName).doc(id).delete();
+}
+
+async function clearAll(collectionName) {
+  const groupId = requireGroup();
+  const snap = await fs.collection(collectionName).where('groupId', '==', groupId).get();
+  for (const batchDocs of chunk(snap.docs, 400)) {
+    const batch = fs.batch();
+    batchDocs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
 
 function uid() {
   return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
 }
 
+// Songs have no per-user ownership (only role gates writes), just an
+// audit-trail "who first added this" field.
+function stampCreator(song) {
+  if (!song.createdBy) {
+    const user = Auth.currentUser();
+    song.createdBy = user ? user.uid : null;
+  }
+  return song;
+}
+
+// Set once on first save and never overwritten afterward, so an admin
+// editing someone else's setlist doesn't silently become its owner.
+function stampOwner(setlist) {
+  if (!setlist.ownerId) {
+    const user = Auth.currentUser();
+    setlist.ownerId = user ? user.uid : null;
+  }
+  return setlist;
+}
+
 const DB = {
   // Songs
-  getSongs: () => Store.all('songs'),
-  getSong: (id) => Store.get('songs', id),
-  saveSong: (song) => Store.put('songs', song),
-  bulkSaveSongs: (songs) => Store.bulkPut('songs', songs),
-  deleteSong: (id) => Store.delete('songs', id),
-  clearSongs: () => Store.clear('songs'),
+  getSongs: () => queryAll('songs'),
+  getSong: (id) => getOne('songs', id),
+  saveSong: (song) => putOne('songs', stampCreator(song)),
+  bulkSaveSongs: (songs) => bulkPut('songs', songs.map(stampCreator)),
+  deleteSong: (id) => deleteOne('songs', id),
+  clearSongs: () => clearAll('songs'),
 
   // Setlists
-  getSetlists: () => Store.all('setlists'),
-  getSetlist: (id) => Store.get('setlists', id),
-  saveSetlist: (setlist) => Store.put('setlists', setlist),
-  deleteSetlist: (id) => Store.delete('setlists', id),
-  clearSetlists: () => Store.clear('setlists'),
+  getSetlists: () => queryAll('setlists'),
+  getSetlist: (id) => getOne('setlists', id),
+  saveSetlist: (setlist) => putOne('setlists', stampOwner(setlist)),
+  deleteSetlist: (id) => deleteOne('setlists', id),
+  clearSetlists: () => clearAll('setlists'),
 
   uid
 };

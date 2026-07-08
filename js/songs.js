@@ -472,6 +472,7 @@ function createSongsTab(container, ctx) {
       { icon: '⬇', label: 'Import songs', onClick: openImportSheet },
       { icon: '⬆', label: 'Export all songs', onClick: exportSongsJSON },
       { icon: '🗑', label: 'Delete all songs', danger: true, onClick: confirmDeleteAllSongs },
+      ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
   }
 

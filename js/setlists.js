@@ -870,6 +870,7 @@ function createSetlistsTab(container, ctx) {
       { icon: '⬇', label: 'Import setlists', onClick: openSetlistImportSheet },
       { icon: '⬆', label: 'Export all setlists', onClick: exportAllSetlists },
       { icon: '🗑', label: 'Delete all setlists', danger: true, onClick: confirmDeleteAllSetlists },
+      ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
   }
 

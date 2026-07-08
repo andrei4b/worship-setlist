@@ -188,6 +188,118 @@ function boot() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', boot);
+// ---- Auth gate ----
+// Decides which of three states the app is in and renders accordingly:
+//   not signed in         -> sign-in screen
+//   signed in, no group   -> join-group screen
+//   signed in, in a group -> the app (boot)
+let _screen = null;
+function renderGate() {
+  const appRoot = document.getElementById('app');
+  const user = Auth.currentUser();
+  const target = !user ? 'signin' : (!user.groupId ? 'join' : 'app');
+  if (target === 'app') {
+    // Don't rebuild a running app on incidental auth pings (e.g. token refresh).
+    if (_screen !== 'app') { _screen = 'app'; boot(); }
+    return;
+  }
+  _screen = target;
+  if (target === 'signin') renderSignInScreen(appRoot);
+  else renderJoinScreen(appRoot);
+}
+
+function renderSignInScreen(appRoot) {
+  $clear(appRoot);
+  const btn = $el('button', { class: 'btn btn--primary btn--block' }, 'Sign in with Google');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      await Auth.signInWithGoogle();
+    } catch (err) {
+      UI.toast('Sign-in failed or cancelled', { variant: 'danger' });
+      btn.disabled = false;
+    }
+  });
+  appRoot.appendChild(
+    $el('div', { class: 'auth-screen' },
+      $el('div', { class: 'auth-card' },
+        $el('div', { class: 'auth-mark' }, '♪'),
+        $el('h1', { class: 'auth-title' }, 'Worship Setlist'),
+        $el('p', { class: 'auth-sub' }, 'Sign in to see your church group’s songs and setlists.'),
+        btn
+      )
+    )
+  );
+}
+
+function renderJoinScreen(appRoot) {
+  $clear(appRoot);
+  const user = Auth.currentUser();
+
+  const codeInput = $el('input', { type: 'text', placeholder: 'Invite code', autocapitalize: 'characters', autocomplete: 'off' });
+  const joinBtn = $el('button', { class: 'btn btn--primary btn--block' }, 'Join group');
+  joinBtn.addEventListener('click', async () => {
+    joinBtn.disabled = true;
+    try { await Auth.redeemInvite(codeInput.value); }
+    catch (err) { UI.toast(err.message || 'Could not join', { variant: 'danger' }); joinBtn.disabled = false; }
+  });
+
+  const groupNameInput = $el('input', { type: 'text', placeholder: 'e.g. Grace Church', autocomplete: 'off' });
+  const createBtn = $el('button', { class: 'btn btn--secondary btn--block' }, 'Create a new group');
+  createBtn.addEventListener('click', async () => {
+    createBtn.disabled = true;
+    try { await Auth.createGroup(groupNameInput.value); }
+    catch (err) { UI.toast(err.message || 'Could not create group', { variant: 'danger' }); createBtn.disabled = false; }
+  });
+
+  appRoot.appendChild(
+    $el('div', { class: 'auth-screen' },
+      $el('div', { class: 'auth-card' },
+        $el('h1', { class: 'auth-title' }, 'Join your group'),
+        $el('p', { class: 'auth-sub' }, 'Signed in as ' + user.email),
+        $el('div', { class: 'field' }, $el('label', null, 'Have an invite code?'), codeInput),
+        joinBtn,
+        $el('div', { class: 'auth-or' }, 'or'),
+        $el('div', { class: 'field' }, $el('label', null, 'Starting a new group?'), groupNameInput),
+        createBtn,
+        $el('button', { class: 'btn btn--ghost btn--block', style: 'margin-top:8px', onclick: () => Auth.signOut() }, 'Sign out')
+      )
+    )
+  );
+}
+
+// Account actions the tab kebab menus splice in (see openSongsMenu /
+// openSetlistsMenu). Admins additionally get "Invite people".
+function accountMenuItems() {
+  const items = [];
+  if (Auth.isAdmin()) items.push({ icon: '✉', label: 'Invite people', onClick: showInviteCode });
+  items.push({ icon: '⎋', label: 'Sign out', onClick: () => Auth.signOut() });
+  return items;
+}
+
+async function showInviteCode() {
+  let code;
+  try { code = await Auth.createInvite(); }
+  catch (err) { UI.toast(err.message || 'Could not create invite', { variant: 'danger' }); return; }
+  const body = $el('div', null,
+    $el('p', { class: 'field-hint', style: 'margin-bottom:12px' }, 'Share this code so someone can join your group:'),
+    $el('div', { class: 'invite-code' }, code),
+    $el('button', { class: 'btn btn--secondary btn--block', style: 'margin-top:14px' }, 'Copy code')
+  );
+  body.querySelector('button').addEventListener('click', async () => {
+    const ok = await FileUtil.copyToClipboard(code);
+    UI.toast(ok ? 'Code copied' : 'Could not copy', ok ? {} : { variant: 'danger' });
+  });
+  openSheet('Invite people', body, null);
+}
+
+window.accountMenuItems = accountMenuItems;
+
+Auth.onChange(() => renderGate());
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await Auth.ready();
+  renderGate();
+});
 
 })();
