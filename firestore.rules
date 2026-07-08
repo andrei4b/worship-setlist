@@ -1,0 +1,99 @@
+rules_version = '2';
+
+// Security rules for worship-setlist's multi-user/multi-group model.
+//
+// This is the real enforcement layer — the app's UI hides buttons the
+// current user shouldn't see, but that's UX only. Anyone can call the
+// Firestore SDK directly from devtools, so these rules are what actually
+// stop a non-admin from writing a song or a non-owner from editing someone
+// else's setlist.
+//
+// Data model:
+//   /users/{uid}          { email, displayName, role: 'admin'|'user', groupId, createdAt }
+//   /groups/{groupId}     { name, createdBy, createdAt }
+//   /invites/{code}       { groupId, createdBy, createdAt }
+//   /songs/{songId}       { ...song fields, groupId, createdBy }
+//   /setlists/{setlistId} { ...setlist fields, groupId, ownerId }
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function myGroup() {
+      return myProfile().groupId;
+    }
+    function isAdmin() {
+      return myProfile().role == 'admin';
+    }
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    match /users/{userId} {
+      // Read your own profile, or any profile in your own group (member lists).
+      allow read: if isSignedIn() && (userId == request.auth.uid || resource.data.groupId == myGroup());
+
+      // First write ever to this doc — either self-granted admin on a group
+      // you just created, or self-granted 'user' on joining an existing group.
+      allow create: if isSignedIn() && userId == request.auth.uid
+        && request.resource.data.groupId is string
+        && (
+          (request.resource.data.role == 'admin'
+            && exists(/databases/$(database)/documents/groups/$(request.resource.data.groupId))
+            && get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.createdBy == request.auth.uid)
+          ||
+          (request.resource.data.role == 'user'
+            && exists(/databases/$(database)/documents/groups/$(request.resource.data.groupId)))
+        );
+
+      // The only allowed update: an existing admin flips another group
+      // member's role. Nothing else about a profile can ever change.
+      allow update: if isSignedIn() && isAdmin()
+        && resource.data.groupId == myGroup()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+        && request.resource.data.role in ['admin', 'user'];
+
+      allow delete: if false;
+    }
+
+    match /groups/{groupId} {
+      allow read: if isSignedIn() && groupId == myGroup();
+      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /invites/{code} {
+      // Readable by any signed-in user so a brand-new profile-less user can
+      // redeem a code before they belong to any group.
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isAdmin()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.groupId == myGroup();
+      allow update, delete: if false;
+    }
+
+    match /songs/{songId} {
+      allow read: if isSignedIn() && resource.data.groupId == myGroup();
+      allow create: if isSignedIn() && isAdmin() && request.resource.data.groupId == myGroup();
+      allow update: if isSignedIn() && isAdmin()
+        && resource.data.groupId == myGroup() && unchanged('groupId');
+      allow delete: if isSignedIn() && isAdmin() && resource.data.groupId == myGroup();
+    }
+
+    match /setlists/{setlistId} {
+      allow read: if isSignedIn() && resource.data.groupId == myGroup();
+      allow create: if isSignedIn()
+        && request.resource.data.groupId == myGroup()
+        && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.groupId == myGroup()
+        && unchanged('groupId') && unchanged('ownerId')
+        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && resource.data.groupId == myGroup()
+        && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+  }
+}
