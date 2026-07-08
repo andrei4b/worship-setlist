@@ -380,11 +380,17 @@ function createSetlistsTab(container, ctx) {
     const subEl = el('div', { class: 'detail-header-sub' }, setlistSubtitle(draft));
 
     function openEditSetlistSheet() {
+      // Same lock as creation: a regular user's setlist stays attributed to
+      // them, resynced to their current Google name even if it drifted (e.g.
+      // edited before this existed, or their account name changed since).
+      // Admins still see/edit whatever's actually stored.
+      const isAdmin = Auth.isAdmin();
       openSetlistFormSheet({
         title: 'Edit setlist',
         dateValue: draft.date || FileUtil.dateStamp(),
         nameValue: draft.name || '',
-        bandValue: draft.band || '',
+        bandValue: isAdmin ? (draft.band || '') : defaultBandName(),
+        bandLocked: !isAdmin,
         sundayServiceValue: draft.sundayService || null,
         submitLabel: 'Save',
         onSubmit: async ({ date, name, band, sundayService }) => {
