@@ -1,15 +1,9 @@
 /* setlists.js — Setlists tab: list + full detail page with drag reorder, auto-save */
 (function () {
 
-// Sunday setlists can be tagged AM/PM; these act as day-bucket values
-// distinct from plain Sunday (0), which now means "Sunday, no service set".
-const SUNDAY_AM = 'sunday-am';
-const SUNDAY_PM = 'sunday-pm';
-
 // Monday-first display order for the day-filter picker (data is still
-// indexed Date#getDay()-style, i.e. 0 = Sunday, under the hood) — Sunday's
-// AM/PM buckets sort right before the catch-all "Sunday, no service" one.
-const DAY_PICKER_ORDER = [1, 2, 3, 4, 5, 6, SUNDAY_AM, SUNDAY_PM, 0];
+// indexed Date#getDay()-style, i.e. 0 = Sunday, under the hood).
+const DAY_PICKER_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 // Sentinel band-filter value meaning "setlists with no band set", distinct
 // from null (no filter — show everything).
@@ -123,18 +117,14 @@ function createSetlistsTab(container, ctx) {
     return getSetlistDate(sl).getTime();
   }
 
-  // Day-filter bucket: Monday..Saturday are just their Date#getDay() index;
-  // Sunday splits into AM/PM when a service is set, or plain 0 otherwise.
+  // Day-filter bucket: just the weekday — AM/PM Sunday setlists are filtered
+  // together under one "Duminică" bucket, since a per-service split filter
+  // turned out to be more granular than useful in practice.
   function dayBucketForSetlist(sl) {
-    const day = getSetlistDate(sl).getDay();
-    if (day === 0 && sl.sundayService === 'AM') return SUNDAY_AM;
-    if (day === 0 && sl.sundayService === 'PM') return SUNDAY_PM;
-    return day;
+    return getSetlistDate(sl).getDay();
   }
 
   function dayBucketLabel(bucket) {
-    if (bucket === SUNDAY_AM) return 'Duminică AM';
-    if (bucket === SUNDAY_PM) return 'Duminică PM';
     return weekdayNames[bucket];
   }
 
