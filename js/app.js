@@ -149,9 +149,21 @@ const ICONS = {
 };
 
 // ---- App shell ----
-function boot() {
-  const appRoot = document.getElementById('app');
+function renderLoadingScreen(appRoot) {
   $clear(appRoot);
+  appRoot.appendChild(
+    $el('div', { class: 'auth-screen' },
+      $el('div', { class: 'loading-spinner', title: 'Loading…' })
+    )
+  );
+}
+
+// Shown from the moment a Google account is picked until the app's own data
+// has actually loaded, so there's no gap where the screen looks stuck or
+// flashes an empty shell before songs/setlists appear.
+async function boot() {
+  const appRoot = document.getElementById('app');
+  renderLoadingScreen(appRoot);
 
   const songsContainer = $el('div', { style: 'display:flex; flex-direction:column; flex:1;' });
   const setlistsContainer = $el('div', { style: 'display:none; flex-direction:column; flex:1;' });
@@ -163,10 +175,6 @@ function boot() {
       $el('span', { html: ICONS.setlists }), 'Setlists')
   );
 
-  appRoot.appendChild(songsContainer);
-  appRoot.appendChild(setlistsContainer);
-  appRoot.appendChild(tabbar);
-
   const songsApi = createSongsTab(songsContainer, {
     refreshSetlists: () => setlistsApi.load()
   });
@@ -175,8 +183,12 @@ function boot() {
     refreshSongs: () => songsApi.load()
   });
 
-  songsApi.load();
-  setlistsApi.load();
+  await Promise.all([songsApi.load(), setlistsApi.load()]);
+
+  $clear(appRoot);
+  appRoot.appendChild(songsContainer);
+  appRoot.appendChild(setlistsContainer);
+  appRoot.appendChild(tabbar);
 
   function switchTab(which) {
     const showSongs = which === 'songs';
@@ -213,11 +225,16 @@ function renderSignInScreen(appRoot) {
   const btn = $el('button', { class: 'btn btn--primary btn--block' }, 'Sign in with Google');
   btn.addEventListener('click', async () => {
     btn.disabled = true;
+    btn.textContent = 'Signing in…';
     try {
       await Auth.signInWithGoogle();
+      // Success hands off to Auth.onChange -> renderGate(), which shows its
+      // own loading screen while the app's data loads — nothing more to do
+      // here, this screen is about to be replaced.
     } catch (err) {
       UI.toast('Sign-in failed or cancelled', { variant: 'danger' });
       btn.disabled = false;
+      btn.textContent = 'Sign in with Google';
     }
   });
   appRoot.appendChild(
