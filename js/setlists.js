@@ -838,7 +838,8 @@ function createSetlistsTab(container, ctx) {
       if (item.type === 'text') return withTextEntryPrefix(item.text || '');
       const song = getSongById(item.songId);
       if (!song) return '(song removed)';
-      return `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
+      const songLine = `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
+      return song.link ? `${songLine}\n${song.link}` : songLine;
     });
     return (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
   }
