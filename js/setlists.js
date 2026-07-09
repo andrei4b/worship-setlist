@@ -919,12 +919,26 @@ function createSetlistsTab(container, ctx) {
   // ── Setlists list 3-dot menu ───────────────────────────────────────────
   function openSetlistsMenu() {
     openActionMenu([
+      { icon: '⟳', label: 'Refresh', onClick: refreshData },
       { icon: '⬇', label: 'Import setlists', onClick: openSetlistImportSheet },
       { icon: '⬆', label: 'Export all setlists', onClick: exportAllSetlists },
       // Cuts across ownership, so it's admin-only rather than per-owner.
       ...(Auth.isAdmin() ? [{ icon: '🗑', label: 'Delete all setlists', danger: true, onClick: confirmDeleteAllSetlists }] : []),
       ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
+  }
+
+  // Re-fetches both tabs' data from Firestore, in case someone else in the
+  // group changed something and the pre-Firestore one-shot load()/render
+  // hasn't picked it up yet (no live listeners — see js/db.js).
+  async function refreshData() {
+    try {
+      await load();
+      if (ctx.refreshSongs) await ctx.refreshSongs();
+      toast('Refreshed');
+    } catch (err) {
+      toast(describeDbError(err), { variant: 'danger' });
+    }
   }
 
   function confirmDeleteAllSetlists() {

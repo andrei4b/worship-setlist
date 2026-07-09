@@ -496,11 +496,25 @@ function createSongsTab(container, ctx) {
   // ---- 3-dot menu ----
   function openSongsMenu() {
     openActionMenu([
+      { icon: '⟳', label: 'Refresh', onClick: refreshData },
       ...(Auth.isAdmin() ? [{ icon: '⬇', label: 'Import songs', onClick: openImportSheet }] : []),
       { icon: '⬆', label: 'Export all songs', onClick: exportSongsJSON },
       ...(Auth.isAdmin() ? [{ icon: '🗑', label: 'Delete all songs', danger: true, onClick: confirmDeleteAllSongs }] : []),
       ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
+  }
+
+  // Re-fetches both tabs' data from Firestore, in case someone else in the
+  // group changed something and the pre-Firestore one-shot load()/render
+  // hasn't picked it up yet (no live listeners — see js/db.js).
+  async function refreshData() {
+    try {
+      await load();
+      if (ctx.refreshSetlists) await ctx.refreshSetlists();
+      toast('Refreshed');
+    } catch (err) {
+      toast(describeDbError(err), { variant: 'danger' });
+    }
   }
 
   function confirmDeleteAllSongs() {
