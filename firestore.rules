@@ -62,12 +62,10 @@ service cloud.firestore {
 
     match /groups/{groupId} {
       allow read: if isSignedIn() && groupId == myGroup();
-      // Only the app owner's account may spin up a brand-new group — invite
-      // codes are the only way anyone else joins. request.auth.token.email
-      // is the verified email claim from the Google Sign-In ID token, so
-      // this can't be spoofed by a client.
-      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid
-        && request.auth.token.email == 'andrei4.bulzan@gmail.com';
+      // No self-serve group creation at all — the app owner creates every
+      // group by hand (Firebase console / a one-off script). Invite codes
+      // are the only way anyone else ever joins.
+      allow create: if false;
       allow update, delete: if false;
     }
 

@@ -249,16 +249,13 @@ function renderSignInScreen(appRoot) {
   );
 }
 
-// Only this account may spin up a brand-new group — enforced for real in
-// firestore.rules (request.auth.token.email check on /groups create); this
-// is just so nobody else even sees a "create a group" button that would
-// dead-end in a permission error.
-const GROUP_CREATOR_EMAIL = 'andrei4.bulzan@gmail.com';
-
+// There is no self-serve "create a group" path — every group is created by
+// the app owner directly (Firebase console / a one-off script), and everyone
+// else only ever joins an existing group via invite code. Mirrored in
+// firestore.rules, where /groups create is unconditionally denied.
 function renderJoinScreen(appRoot) {
   $clear(appRoot);
   const user = Auth.currentUser();
-  const canCreateGroup = user.email === GROUP_CREATOR_EMAIL;
 
   const codeInput = $el('input', { type: 'text', placeholder: 'Invite code', autocapitalize: 'characters', autocomplete: 'off' });
   const joinBtn = $el('button', { class: 'btn btn--primary btn--block' }, 'Join group');
@@ -268,22 +265,6 @@ function renderJoinScreen(appRoot) {
     catch (err) { UI.toast(err.message || 'Could not join', { variant: 'danger' }); joinBtn.disabled = false; }
   });
 
-  let createSection = null;
-  if (canCreateGroup) {
-    const groupNameInput = $el('input', { type: 'text', placeholder: 'e.g. Grace Church', autocomplete: 'off' });
-    const createBtn = $el('button', { class: 'btn btn--secondary btn--block' }, 'Create a new group');
-    createBtn.addEventListener('click', async () => {
-      createBtn.disabled = true;
-      try { await Auth.createGroup(groupNameInput.value); }
-      catch (err) { UI.toast(err.message || 'Could not create group', { variant: 'danger' }); createBtn.disabled = false; }
-    });
-    createSection = [
-      $el('div', { class: 'auth-or' }, 'or'),
-      $el('div', { class: 'field' }, $el('label', null, 'Starting a new group?'), groupNameInput),
-      createBtn
-    ];
-  }
-
   appRoot.appendChild(
     $el('div', { class: 'auth-screen' },
       $el('div', { class: 'auth-card' },
@@ -291,7 +272,7 @@ function renderJoinScreen(appRoot) {
         $el('p', { class: 'auth-sub' }, 'Signed in as ' + user.email),
         $el('div', { class: 'field' }, $el('label', null, 'Have an invite code?'), codeInput),
         joinBtn,
-        ...(createSection || []),
+        $el('p', { class: 'auth-sub', style: 'margin-top:12px' }, 'No code? Ask your group admin to invite you.'),
         $el('button', { class: 'btn btn--ghost btn--block', style: 'margin-top:8px', onclick: () => Auth.signOut() }, 'Sign out')
       )
     )

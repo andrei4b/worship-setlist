@@ -6,8 +6,9 @@
  *
  * A signed-in user is only "in the app" once they have a /users/{uid} profile
  * doc, which carries their role ('admin'|'user') and groupId. A brand-new
- * sign-in has no profile until they either create a group (becoming its first
- * admin) or redeem an invite code (joining as a regular user). */
+ * sign-in has no profile until they redeem an invite code, joining as a
+ * regular user of that group — there is no self-serve way to create a new
+ * group; the app owner does that by hand (Firebase console / a script). */
 (function () {
 
 firebase.initializeApp(window.FIREBASE_CONFIG);
@@ -77,23 +78,6 @@ async function refreshProfile() {
   return _profile;
 }
 
-// Create a brand-new group; the signed-in user becomes its first admin.
-async function createGroup(name) {
-  if (!_fbUser) throw new Error('Not signed in');
-  const groupName = String(name || '').trim() || 'My Church';
-  const groupRef = fs.collection('groups').doc();
-  await groupRef.set({ name: groupName, createdBy: _fbUser.uid, createdAt: Date.now() });
-  await fs.collection('users').doc(_fbUser.uid).set({
-    email: _fbUser.email || '',
-    displayName: _fbUser.displayName || '',
-    role: 'admin',
-    groupId: groupRef.id,
-    createdAt: Date.now()
-  });
-  await refreshProfile();
-  return groupRef.id;
-}
-
 // Redeem an invite code -> join its group as a regular user.
 async function redeemInvite(code) {
   if (!_fbUser) throw new Error('Not signed in');
@@ -152,7 +136,7 @@ async function setMemberRole(uid, role) {
 window.Auth = {
   ready, onChange, currentUser, isAdmin, currentGroupId,
   signInWithGoogle, signOut, refreshProfile,
-  createGroup, redeemInvite, createInvite,
+  redeemInvite, createInvite,
   listGroupMembers, setMemberRole
 };
 
