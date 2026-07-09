@@ -433,7 +433,7 @@ function createSetlistsTab(container, ctx) {
         el('button', {
           class: 'kebab-btn',
           title: 'Share setlist',
-          onclick: () => shareSetlist(draft)
+          onclick: () => openShareMenu(draft)
         }, el('span', { html: SHARE_ICON })),
         // Nothing in this menu applies to a setlist you can't manage.
         editable ? el('button', {
@@ -838,17 +838,29 @@ function createSetlistsTab(container, ctx) {
       if (item.type === 'text') return withTextEntryPrefix(item.text || '');
       const song = getSongById(item.songId);
       if (!song) return '(song removed)';
-      const songLine = `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
-      return song.link ? `${songLine}\n${song.link}` : songLine;
+      return `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
     });
     return (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
   }
 
-  async function shareSetlist(setlist) {
-    const text = buildSetlistText(setlist);
+  // Songs only (no text entries), each followed by its link on the next
+  // line when it has one, with a blank line between entries.
+  function buildSongLinksText(setlist) {
+    const blocks = (setlist.items || [])
+      .filter(item => item.type === 'song')
+      .map(item => {
+        const song = getSongById(item.songId);
+        if (!song) return '(song removed)';
+        const songLine = `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
+        return song.link ? `${songLine}\n${song.link}` : songLine;
+      });
+    return (setlist.name ? setlist.name + '\n\n' : '') + blocks.join('\n\n');
+  }
+
+  async function shareText(title, text) {
     if (navigator.share) {
       try {
-        await navigator.share({ title: setlist.name || 'Setlist', text });
+        await navigator.share({ title, text });
       } catch (err) {
         if (err.name !== 'AbortError') toast('Could not share — try again', { variant: 'danger' });
       }
@@ -857,6 +869,13 @@ function createSetlistsTab(container, ctx) {
     // No Web Share support (e.g. desktop) — fall back to a direct copy.
     const ok = await FileUtil.copyToClipboard(text);
     toast(ok ? 'Copied to clipboard' : 'Could not copy — try again');
+  }
+
+  function openShareMenu(setlist) {
+    openActionMenu([
+      { icon: '📋', label: 'Share full setlist', onClick: () => shareText(setlist.name || 'Setlist', buildSetlistText(setlist)) },
+      { icon: '🔗', label: 'Share songs & links', onClick: () => shareText(setlist.name || 'Setlist', buildSongLinksText(setlist)) },
+    ]);
   }
 
   // ── Bundle format helpers ──────────────────────────────────────────────
