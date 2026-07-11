@@ -4,6 +4,9 @@
 const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput, describeDbError, confirmDestructive } = UI;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
+// Only the two narrowing filter rows — a song tagged 'All ages' (or
+// untagged) matches both, so it never needs its own filter row.
+const AGE_GROUP_FILTERS = ['Youth', 'Congregation'];
 const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
 
 function groupLetter(title) {
@@ -31,6 +34,7 @@ function createSongsTab(container, ctx) {
   let songs = [];
   let query = '';
   let paceFilter = null;
+  let ageGroupFilter = null;
 
   const root = el('div');
   container.appendChild(root);
@@ -40,6 +44,17 @@ function createSongsTab(container, ctx) {
     render();
   }
 
+  // Untagged/legacy songs (no ageGroup field) count as 'All ages'.
+  function ageGroupOf(song) { return song.ageGroup || 'All ages'; }
+
+  // 'All ages' matches every filter, not just its own — it's inclusive
+  // membership in both other groups, not a third exclusive bucket.
+  function matchesAgeGroupFilter(song, filter) {
+    if (filter === null) return true;
+    const ag = ageGroupOf(song);
+    return ag === filter || ag === 'All ages';
+  }
+
   function getFiltered() {
     let list = songs;
     if (query.trim()) {
@@ -47,6 +62,7 @@ function createSongsTab(container, ctx) {
       list = list.filter(s => normalizeForSearch(s.title).includes(q));
     }
     if (paceFilter) list = list.filter(s => s.pace === paceFilter);
+    if (ageGroupFilter !== null) list = list.filter(s => matchesAgeGroupFilter(s, ageGroupFilter));
     list = [...list];
     list.sort((a, b) => a.title.localeCompare(b.title));
     return list;
@@ -78,7 +94,11 @@ function createSongsTab(container, ctx) {
             class: `chip-btn chip-btn--pace-${pace.toLowerCase()}` + (paceFilter === pace ? ' is-active' : ''),
             onclick: () => { paceFilter = paceFilter === pace ? null : pace; renderList(); updatePaceChips(); }
           }, pace)
-        )
+        ),
+        el('button', {
+          class: 'chip-btn' + (ageGroupFilter !== null ? ' is-active' : ''),
+          onclick: openAgeGroupFilterPicker
+        }, (ageGroupFilter === null ? 'All ages' : ageGroupFilter) + ' ▾')
       )
     );
     root.appendChild(header);
@@ -110,6 +130,19 @@ function createSongsTab(container, ctx) {
 
     renderList();
     root._renderList = renderList;
+  }
+
+  function openAgeGroupFilterPicker() {
+    // Full render() (not the content-only nested renderList) since the
+    // chip's own label text needs to change, not just the list below it.
+    const options = [null, ...AGE_GROUP_FILTERS];
+    const listEl = el('div', { class: 'picker-list' },
+      ...options.map(ag => el('div', {
+        class: 'picker-row' + (ageGroupFilter === ag ? ' is-selected' : ''),
+        onclick: () => { ageGroupFilter = ag; closeSheet(); render(); }
+      }, el('div', { class: 'picker-row-title' }, ag === null ? 'All ages' : ag)))
+    );
+    openSheet('Filter by age group', listEl, null);
   }
 
   function renderListInto(wrap, list) {
@@ -206,6 +239,7 @@ function createSongsTab(container, ctx) {
     const chips = [];
     if (song.key) chips.push(el('span', { class: 'mini-chip mini-chip--key' }, song.key));
     if (song.tempo) chips.push(el('span', { class: 'mini-chip mini-chip--tempo' }, song.tempo));
+    if (ageGroupOf(song) !== 'All ages') chips.push(el('span', { class: 'tag-pill' }, ageGroupOf(song)));
 
     const cardClass = 'song-card' + (song.pace ? ' song-card--pace-' + song.pace.toLowerCase() : '');
     const cardEl = el('div', { class: cardClass, title: song.pace || undefined },
@@ -422,7 +456,7 @@ function createSongsTab(container, ctx) {
   function openSongForm(song) {
     const isEdit = !!song;
     const draft = song ? { ...song } : {
-      title: '', key: '', tempo: '', link: '', pace: ''
+      title: '', key: '', tempo: '', link: '', pace: '', ageGroup: 'All ages'
     };
 
     const titleInput = el('input', { type: 'text', value: draft.title, placeholder: 'e.g. Amazing Grace' });
@@ -437,6 +471,17 @@ function createSongsTab(container, ctx) {
     );
     paceSelect.value = draft.pace || '';
 
+    let ageGroup = draft.ageGroup || 'All ages';
+    const youthBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { ageGroup = 'Youth'; updateAgeGroupButtons(); } }, 'Youth');
+    const congBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { ageGroup = 'Congregation'; updateAgeGroupButtons(); } }, 'Congregation');
+    const allAgesBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { ageGroup = 'All ages'; updateAgeGroupButtons(); } }, 'All ages');
+    function updateAgeGroupButtons() {
+      youthBtn.classList.toggle('is-active', ageGroup === 'Youth');
+      congBtn.classList.toggle('is-active', ageGroup === 'Congregation');
+      allAgesBtn.classList.toggle('is-active', ageGroup === 'All ages');
+    }
+    updateAgeGroupButtons();
+
     const body = el('div', null,
       formField('Title', titleInput),
       el('div', { class: 'field-row' },
@@ -447,7 +492,8 @@ function createSongsTab(container, ctx) {
         const url = linkInput.value.trim();
         if (url) window.open(url, '_blank', 'noopener,noreferrer');
       }),
-      formField('Pace', paceSelect, 'Slow, Medium, or Fast')
+      formField('Pace', paceSelect, 'Slow, Medium, or Fast'),
+      formField('Age group', el('div', { class: 'segmented-toggle' }, youthBtn, congBtn, allAgesBtn))
     );
 
     const footer = el('div', { class: 'sheet-footer' },
@@ -476,6 +522,7 @@ function createSongsTab(container, ctx) {
             tempo: tempoInput.value.trim(),
             link: linkInput.value.trim(),
             pace: paceSelect.value,
+            ageGroup,
             createdAt: draft.createdAt || Date.now()
           };
           try {

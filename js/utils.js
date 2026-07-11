@@ -109,6 +109,15 @@ function normalizePace(value) {
   return '';
 }
 
+// Unlike normalizePace's '', missing/unrecognized age group defaults to
+// 'All ages' so untagged songs show under every age-group filter.
+function normalizeAgeGroup(value) {
+  const v = String(value || '').trim().toLowerCase();
+  if (v === 'youth') return 'Youth';
+  if (v === 'congregation') return 'Congregation';
+  return 'All ages';
+}
+
 function songsToJSON(songs) {
   return JSON.stringify({ type: 'worship-planner-songs', version: 1, songs }, null, 2);
 }
@@ -123,6 +132,7 @@ function jsonToSongs(text) {
     tempo: s.tempo || '',
     link: s.link || '',
     pace: normalizePace(s.pace),
+    ageGroup: normalizeAgeGroup(s.ageGroup),
     createdAt: s.createdAt || Date.now()
   }));
 }
