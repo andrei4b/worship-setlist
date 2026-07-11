@@ -92,12 +92,23 @@ function createSetlistsTab(container, ctx) {
     renderList(); // refresh list (name/date may have changed)
   }
 
+  // Matches the setlist's own name, or the title of any song it contains
+  // (free-text entries don't count — only actual song references).
+  function setlistMatchesQuery(sl, q) {
+    if (normalizeForSearch(sl.name).includes(q)) return true;
+    return (sl.items || []).some(item => {
+      if (item.type !== 'song') return false;
+      const song = getSongById(item.songId);
+      return !!song && normalizeForSearch(song.title).includes(q);
+    });
+  }
+
   // ── List view ──────────────────────────────────────────────────────────
   function getFiltered() {
     let list = setlists;
     if (query.trim()) {
       const q = normalizeForSearch(query.trim());
-      list = list.filter(sl => normalizeForSearch(sl.name).includes(q));
+      list = list.filter(sl => setlistMatchesQuery(sl, q));
     }
     if (dayFilter !== null) list = list.filter(sl => dayBucketForSetlist(sl) === dayFilter);
     if (bandFilter === NO_BAND) list = list.filter(sl => !sl.band);
@@ -425,12 +436,13 @@ function createSetlistsTab(container, ctx) {
           title: 'Share setlist',
           onclick: () => openShareMenu(draft)
         }, el('span', { html: SHARE_ICON })),
-        // Nothing in this menu applies to a setlist you can't manage.
-        editable ? el('button', {
+        // Always shown — "Duplicate" applies even to a setlist you can't
+        // manage; Edit/Delete are added inside openDetailMenu only if editable.
+        el('button', {
           class: 'kebab-btn',
           title: 'More options',
-          onclick: () => openDetailMenu(draft, openEditSetlistSheet)
-        }, '⋮') : null
+          onclick: () => openDetailMenu(draft, editable, openEditSetlistSheet)
+        }, '⋮')
       )
     );
     detailView.appendChild(topBar);
@@ -991,11 +1003,43 @@ function createSetlistsTab(container, ctx) {
   }
 
   // ── Detail page 3-dot menu ─────────────────────────────────────────────
-  function openDetailMenu(draft, onEdit) {
+  function openDetailMenu(draft, editable, onEdit) {
     openActionMenu([
-      { icon: '✎', label: 'Edit setlist', onClick: onEdit },
-      { icon: '🗑', label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
+      { icon: '⧉', label: 'Duplicate setlist', onClick: () => duplicateSetlist(draft) },
+      ...(editable ? [
+        { icon: '✎', label: 'Edit setlist', onClick: onEdit },
+        { icon: '🗑', label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
+      ] : []),
     ]);
+  }
+
+  // Anyone can duplicate any setlist they can view — even one they don't
+  // own or can't edit. The copy is a brand-new setlist that always becomes
+  // owned by whoever duplicates it (DB.saveSetlist stamps ownerId), so this
+  // never touches the original or its permissions.
+  function duplicateSetlist(source) {
+    const todayStr = FileUtil.dateStamp();
+    openSetlistFormSheet({
+      title: 'Duplicate setlist',
+      dateValue: todayStr,
+      nameValue: setlistNameFromDate(todayStr),
+      bandValue: defaultBandName(),
+      bandLocked: !Auth.isAdmin(),
+      submitLabel: 'Duplicate',
+      onSubmit: async ({ date, name, band, sundayService }) => {
+        const sl = {
+          id: DB.uid(), name, date, band, sundayService,
+          items: (source.items || []).map(item => ({ ...item })),
+          createdAt: Date.now(), updatedAt: Date.now()
+        };
+        try {
+          await DB.saveSetlist(sl);
+        } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
+        setlists.push(sl);
+        closeSheet(true, true);
+        showDetail(sl, { replace: true });
+      }
+    });
   }
 
   async function deleteSetlistFromDetail(draft) {
