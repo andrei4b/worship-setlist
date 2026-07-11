@@ -96,7 +96,7 @@ function createSongsTab(container, ctx) {
           }, pace)
         ),
         el('button', {
-          class: 'chip-btn' + (ageGroupFilter !== null ? ' is-active' : ''),
+          class: 'chip-btn chip-btn--push-right' + (ageGroupFilter !== null ? ' is-active' : ''),
           onclick: openAgeGroupFilterPicker
         }, (ageGroupFilter === null ? 'All ages' : ageGroupFilter) + ' ▾')
       )
