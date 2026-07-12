@@ -51,6 +51,14 @@ function createSetlistsTab(container, ctx) {
     return (user && (user.displayName || user.email)) || '';
   }
 
+  // Default setlist name for a given date — a Sunday defaults to its AM
+  // service (matching openSetlistFormSheet's own default), so a brand-new
+  // Sunday setlist's pre-filled name already reads e.g. "20 iulie 26 AM".
+  function defaultNameForDate(dateStr) {
+    const isSunday = parseDateInput(dateStr).getDay() === 0;
+    return setlistNameFromDate(dateStr) + (isSunday ? ' AM' : '');
+  }
+
   // ── Auto-save ──────────────────────────────────────────────────────────
   async function autoSave(setlist) {
     setlist.updatedAt = Date.now();
@@ -282,10 +290,20 @@ function createSetlistsTab(container, ctx) {
   function openSetlistFormSheet({ title, dateValue, nameValue, bandValue, bandLocked, sundayServiceValue, submitLabel, onSubmit }) {
     let sundayService = sundayServiceValue || null;
 
+    // Regenerates the name from the date (+ " AM"/" PM" on a Sunday) —
+    // only wired to fire on an explicit date/service change, never on the
+    // sheet's initial open, so editing an existing setlist never silently
+    // overwrites its current (possibly custom) title.
+    function updateNameFromDate() {
+      const isSunday = parseDateInput(dateInput.value).getDay() === 0;
+      const base = setlistNameFromDate(dateInput.value);
+      nameInput.value = isSunday && sundayService ? `${base} ${sundayService}` : base;
+    }
+
     const dateInput = el('input', {
       type: 'date',
       value: dateValue,
-      onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value); syncSundayField(); }
+      onchange: () => { syncSundayField(); updateNameFromDate(); }
     });
     const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: nameValue });
     // Regular users' setlists are always attributed to themselves — locked
@@ -296,8 +314,8 @@ function createSetlistsTab(container, ctx) {
       disabled: bandLocked || undefined
     });
 
-    const amBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'AM'; updateSundayButtons(); } }, 'AM');
-    const pmBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'PM'; updateSundayButtons(); } }, 'PM');
+    const amBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'AM'; updateSundayButtons(); updateNameFromDate(); } }, 'AM');
+    const pmBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'PM'; updateSundayButtons(); updateNameFromDate(); } }, 'PM');
     function updateSundayButtons() {
       amBtn.classList.toggle('is-active', sundayService === 'AM');
       pmBtn.classList.toggle('is-active', sundayService === 'PM');
@@ -344,7 +362,7 @@ function createSetlistsTab(container, ctx) {
     openSetlistFormSheet({
       title: 'New setlist',
       dateValue: todayStr,
-      nameValue: setlistNameFromDate(todayStr),
+      nameValue: defaultNameForDate(todayStr),
       bandValue: defaultBandName(),
       bandLocked: !Auth.isAdmin(),
       submitLabel: 'Create',

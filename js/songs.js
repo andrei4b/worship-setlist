@@ -375,12 +375,20 @@ function createSongsTab(container, ctx) {
       const todayStr = FileUtil.dateStamp();
       let sundayService = null;
 
+      // Regenerates the name from the date (+ " AM"/" PM" on a Sunday).
+      function updateNameFromDate() {
+        const isSunday = parseDateInput(dateInput.value || todayStr).getDay() === 0;
+        const base = setlistNameFromDate(dateInput.value || todayStr);
+        nameInput.value = isSunday && sundayService ? `${base} ${sundayService}` : base;
+      }
+
       const dateInput = el('input', {
         type: 'date',
         value: todayStr,
-        onchange: () => { nameInput.value = setlistNameFromDate(dateInput.value || todayStr); syncSundayField(); }
+        onchange: () => { syncSundayField(); updateNameFromDate(); }
       });
-      const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: setlistNameFromDate(todayStr) });
+      const isTodaySunday = parseDateInput(todayStr).getDay() === 0;
+      const nameInput = el('input', { type: 'text', placeholder: 'e.g. Sunday Morning', value: setlistNameFromDate(todayStr) + (isTodaySunday ? ' AM' : '') });
       // Regular users' setlists are always attributed to themselves — locked
       // to their own Google name rather than editable. Admins can still see/
       // change it, just pre-filled with their own name as a starting point.
@@ -388,8 +396,8 @@ function createSongsTab(container, ctx) {
       const defaultBand = (Auth.currentUser() && (Auth.currentUser().displayName || Auth.currentUser().email)) || '';
       const bandInput = el('input', { type: 'text', placeholder: 'e.g. Youth Band', value: defaultBand, disabled: bandLocked || undefined });
 
-      const amBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'AM'; updateSundayButtons(); } }, 'AM');
-      const pmBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'PM'; updateSundayButtons(); } }, 'PM');
+      const amBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'AM'; updateSundayButtons(); updateNameFromDate(); } }, 'AM');
+      const pmBtn = el('button', { type: 'button', class: 'segmented-btn', onclick: () => { sundayService = 'PM'; updateSundayButtons(); updateNameFromDate(); } }, 'PM');
       function updateSundayButtons() {
         amBtn.classList.toggle('is-active', sundayService === 'AM');
         pmBtn.classList.toggle('is-active', sundayService === 'PM');
