@@ -436,13 +436,12 @@ function createSetlistsTab(container, ctx) {
           title: 'Share setlist',
           onclick: () => openShareMenu(draft)
         }, el('span', { html: SHARE_ICON })),
-        // Always shown — "Duplicate" applies even to a setlist you can't
-        // manage; Edit/Delete are added inside openDetailMenu only if editable.
-        el('button', {
+        // Nothing in this menu applies to a setlist you can't manage.
+        editable ? el('button', {
           class: 'kebab-btn',
           title: 'More options',
-          onclick: () => openDetailMenu(draft, editable, openEditSetlistSheet)
-        }, '⋮')
+          onclick: () => openDetailMenu(draft, openEditSetlistSheet)
+        }, '⋮') : null
       )
     );
     detailView.appendChild(topBar);
@@ -1003,43 +1002,11 @@ function createSetlistsTab(container, ctx) {
   }
 
   // ── Detail page 3-dot menu ─────────────────────────────────────────────
-  function openDetailMenu(draft, editable, onEdit) {
+  function openDetailMenu(draft, onEdit) {
     openActionMenu([
-      { icon: '⧉', label: 'Duplicate setlist', onClick: () => duplicateSetlist(draft) },
-      ...(editable ? [
-        { icon: '✎', label: 'Edit setlist', onClick: onEdit },
-        { icon: '🗑', label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
-      ] : []),
+      { icon: '✎', label: 'Edit setlist', onClick: onEdit },
+      { icon: '🗑', label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
     ]);
-  }
-
-  // Anyone can duplicate any setlist they can view — even one they don't
-  // own or can't edit. The copy is a brand-new setlist that always becomes
-  // owned by whoever duplicates it (DB.saveSetlist stamps ownerId), so this
-  // never touches the original or its permissions.
-  function duplicateSetlist(source) {
-    const todayStr = FileUtil.dateStamp();
-    openSetlistFormSheet({
-      title: 'Duplicate setlist',
-      dateValue: todayStr,
-      nameValue: setlistNameFromDate(todayStr),
-      bandValue: defaultBandName(),
-      bandLocked: !Auth.isAdmin(),
-      submitLabel: 'Duplicate',
-      onSubmit: async ({ date, name, band, sundayService }) => {
-        const sl = {
-          id: DB.uid(), name, date, band, sundayService,
-          items: (source.items || []).map(item => ({ ...item })),
-          createdAt: Date.now(), updatedAt: Date.now()
-        };
-        try {
-          await DB.saveSetlist(sl);
-        } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
-        setlists.push(sl);
-        closeSheet(true, true);
-        showDetail(sl, { replace: true });
-      }
-    });
   }
 
   async function deleteSetlistFromDetail(draft) {
