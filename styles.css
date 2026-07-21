@@ -378,7 +378,7 @@ a { color: var(--accent); }
 .fab {
   position: fixed;
   right: 20px;
-  bottom: calc(86px + var(--safe-bottom) + var(--kb-inset, 0px));
+  bottom: calc(var(--safe-bottom) + max(86px, var(--kb-inset, 0px) + 16px));
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--accent);
@@ -399,7 +399,7 @@ a { color: var(--accent); }
 .fab-row {
   position: fixed;
   right: 20px;
-  bottom: calc(86px + var(--safe-bottom) + var(--kb-inset, 0px));
+  bottom: calc(var(--safe-bottom) + max(86px, var(--kb-inset, 0px) + 16px));
   display: flex;
   gap: 10px;
   z-index: 8;
