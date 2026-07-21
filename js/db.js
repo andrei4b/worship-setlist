@@ -97,21 +97,34 @@ function stampOwner(setlist) {
 }
 
 // Shared, group-wide "quick add" suggestions for setlist text entries —
-// most-recently-used first, deduplicated by exact text, capped at 10. One
-// doc per group (keyed by groupId) rather than a queryAll-style collection,
-// since there's only ever one list per group.
+// ranked by how often each text has been used (ties broken by most
+// recently used), capped at 10. One doc per group (keyed by groupId)
+// rather than a queryAll-style collection, since there's only ever one
+// list per group. Stored as {text, count, lastUsed} entries so frequency
+// survives across uses, not just a plain recency-ordered string list.
+function rankRecentTextEntries(entries) {
+  return [...entries].sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed);
+}
+
 async function getRecentTexts() {
   const doc = await getOne('recentTexts', requireGroup());
-  return (doc && doc.texts) || [];
+  const entries = (doc && doc.entries) || [];
+  return rankRecentTextEntries(entries).map(e => e.text);
 }
 
 async function addRecentText(text) {
   const trimmed = String(text || '').trim();
   if (!trimmed) return;
   const groupId = requireGroup();
-  const existing = await getRecentTexts();
-  const texts = [trimmed, ...existing.filter(t => t !== trimmed)].slice(0, 10);
-  await putOne('recentTexts', { id: groupId, texts });
+  const doc = await getOne('recentTexts', groupId);
+  const entries = (doc && doc.entries) || [];
+  const idx = entries.findIndex(e => e.text === trimmed);
+  if (idx >= 0) entries[idx] = { text: trimmed, count: entries[idx].count + 1, lastUsed: Date.now() };
+  else entries.push({ text: trimmed, count: 1, lastUsed: Date.now() });
+  // Re-rank and cap right away, so a text that's about to be evicted for
+  // low frequency is dropped here rather than growing the doc unbounded.
+  const ranked = rankRecentTextEntries(entries).slice(0, 10);
+  await putOne('recentTexts', { id: groupId, entries: ranked });
 }
 
 const DB = {

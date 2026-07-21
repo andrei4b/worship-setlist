@@ -14,8 +14,9 @@ rules_version = '2';
 //   /invites/{code}       { groupId, createdBy, createdAt }
 //   /songs/{songId}       { ...song fields, groupId, createdBy }
 //   /setlists/{setlistId} { ...setlist fields, groupId, ownerId }
-//   /recentTexts/{groupId} { groupId, texts: string[] (<=10) } — shared
-//     "quick add" suggestions for setlist text entries, one doc per group
+//   /recentTexts/{groupId} { groupId, entries: {text,count,lastUsed}[] (<=10) }
+//     — shared "quick add" suggestions for setlist text entries, ranked by
+//     frequency, one doc per group
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -107,8 +108,8 @@ service cloud.firestore {
       allow read: if isSignedIn() && groupId == myGroup();
       allow write: if isSignedIn() && groupId == myGroup()
         && request.resource.data.groupId == groupId
-        && request.resource.data.texts is list
-        && request.resource.data.texts.size() <= 10;
+        && request.resource.data.entries is list
+        && request.resource.data.entries.size() <= 10;
     }
   }
 }
