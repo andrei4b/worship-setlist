@@ -3,15 +3,20 @@
 
 const { el: $el, clear: $clear } = UI;
 
-// ---- Keep sheets clear of the on-screen keyboard ----
+// ---- Keep sheets (and the FAB) clear of the on-screen keyboard ----
 // The visual viewport shrinks (and can shift) when the keyboard opens, but
 // fixed-position elements stay sized to the full layout viewport by default.
-// Mirror the visual viewport into CSS vars so the sheet backdrop tracks it.
+// Mirror the visual viewport into CSS vars so the sheet backdrop tracks it,
+// and expose how much space the keyboard is eating (--kb-inset) so bottom-
+// anchored fixed elements like the FAB can float above it instead of
+// disappearing underneath.
 function syncViewportInsets() {
   const vv = window.visualViewport;
   const root = document.documentElement.style;
   root.setProperty('--vvh', (vv ? vv.height : window.innerHeight) + 'px');
   root.setProperty('--vv-top', (vv ? vv.offsetTop : 0) + 'px');
+  const kbInset = vv ? Math.max(0, window.innerHeight - vv.offsetTop - vv.height) : 0;
+  root.setProperty('--kb-inset', kbInset + 'px');
 }
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', syncViewportInsets);

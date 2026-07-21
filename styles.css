@@ -378,7 +378,7 @@ a { color: var(--accent); }
 .fab {
   position: fixed;
   right: 20px;
-  bottom: calc(86px + var(--safe-bottom));
+  bottom: calc(86px + var(--safe-bottom) + var(--kb-inset, 0px));
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--accent);
@@ -392,16 +392,18 @@ a { color: var(--accent); }
   justify-content: center;
   cursor: pointer;
   z-index: 8;
+  transition: bottom 0.15s ease;
 }
 .fab:active { background: var(--accent-press); transform: scale(0.96); }
 
 .fab-row {
   position: fixed;
   right: 20px;
-  bottom: calc(86px + var(--safe-bottom));
+  bottom: calc(86px + var(--safe-bottom) + var(--kb-inset, 0px));
   display: flex;
   gap: 10px;
   z-index: 8;
+  transition: bottom 0.15s ease;
 }
 .fab-secondary {
   width: 48px; height: 48px;
