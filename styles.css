@@ -131,6 +131,7 @@ a { color: var(--accent); }
 }
 .sort-row::-webkit-scrollbar { display: none; }
 .chip-btn--push-right { margin-left: auto; }
+.suggestion-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .app-title .title-count {
   font-family: var(--font-body);
   font-weight: 500;

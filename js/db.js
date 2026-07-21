@@ -96,6 +96,24 @@ function stampOwner(setlist) {
   return setlist;
 }
 
+// Shared, group-wide "quick add" suggestions for setlist text entries —
+// most-recently-used first, deduplicated by exact text, capped at 7. One
+// doc per group (keyed by groupId) rather than a queryAll-style collection,
+// since there's only ever one list per group.
+async function getRecentTexts() {
+  const doc = await getOne('recentTexts', requireGroup());
+  return (doc && doc.texts) || [];
+}
+
+async function addRecentText(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return;
+  const groupId = requireGroup();
+  const existing = await getRecentTexts();
+  const texts = [trimmed, ...existing.filter(t => t !== trimmed)].slice(0, 7);
+  await putOne('recentTexts', { id: groupId, texts });
+}
+
 const DB = {
   // Songs
   getSongs: () => queryAll('songs'),
@@ -111,6 +129,10 @@ const DB = {
   saveSetlist: (setlist) => putOne('setlists', stampOwner(setlist)),
   deleteSetlist: (id) => deleteOne('setlists', id),
   clearSetlists: () => clearAll('setlists'),
+
+  // Recent text-entry suggestions
+  getRecentTexts,
+  addRecentText,
 
   uid
 };
