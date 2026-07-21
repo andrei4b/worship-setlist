@@ -97,7 +97,7 @@ function stampOwner(setlist) {
 }
 
 // Shared, group-wide "quick add" suggestions for setlist text entries —
-// most-recently-used first, deduplicated by exact text, capped at 7. One
+// most-recently-used first, deduplicated by exact text, capped at 10. One
 // doc per group (keyed by groupId) rather than a queryAll-style collection,
 // since there's only ever one list per group.
 async function getRecentTexts() {
@@ -110,7 +110,7 @@ async function addRecentText(text) {
   if (!trimmed) return;
   const groupId = requireGroup();
   const existing = await getRecentTexts();
-  const texts = [trimmed, ...existing.filter(t => t !== trimmed)].slice(0, 7);
+  const texts = [trimmed, ...existing.filter(t => t !== trimmed)].slice(0, 10);
   await putOne('recentTexts', { id: groupId, texts });
 }
 

@@ -14,7 +14,7 @@ rules_version = '2';
 //   /invites/{code}       { groupId, createdBy, createdAt }
 //   /songs/{songId}       { ...song fields, groupId, createdBy }
 //   /setlists/{setlistId} { ...setlist fields, groupId, ownerId }
-//   /recentTexts/{groupId} { groupId, texts: string[] (<=7) } — shared
+//   /recentTexts/{groupId} { groupId, texts: string[] (<=10) } — shared
 //     "quick add" suggestions for setlist text entries, one doc per group
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -108,7 +108,7 @@ service cloud.firestore {
       allow write: if isSignedIn() && groupId == myGroup()
         && request.resource.data.groupId == groupId
         && request.resource.data.texts is list
-        && request.resource.data.texts.size() <= 7;
+        && request.resource.data.texts.size() <= 10;
     }
   }
 }
