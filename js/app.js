@@ -3,6 +3,8 @@
 
 const { el: $el, clear: $clear } = UI;
 
+const PEOPLE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+
 // ---- Keep sheets (and the FAB) clear of the on-screen keyboard ----
 // The visual viewport shrinks (and can shift) when the keyboard opens, but
 // fixed-position elements stay sized to the full layout viewport by default.
@@ -134,7 +136,11 @@ function openActionMenu(items) {
         setTimeout(() => item.onClick(), 220);
       }
     },
-      $el('span', { class: 'icon' }, item.icon || ''),
+      // `html` (not a text child) so an icon can be either a plain glyph
+      // or raw inline-SVG markup — true-emoji glyphs (🗑, 👥, etc.) ignore
+      // `color` and render in full-color on most platforms, clashing with
+      // the rest of this monochrome icon set, so those ones are SVG.
+      $el('span', { class: 'icon', html: item.icon || '' }),
       item.label
     ))
   );
@@ -290,7 +296,7 @@ function accountMenuItems() {
   const items = [];
   if (Auth.isAdmin()) {
     items.push({ icon: '✉', label: 'Invite people', onClick: showInviteCode });
-    items.push({ icon: '👥', label: 'Manage members', onClick: showMembers });
+    items.push({ icon: PEOPLE_ICON, label: 'Manage members', onClick: showMembers });
   }
   items.push({ icon: '⎋', label: 'Sign out', onClick: () => Auth.signOut() });
   return items;

@@ -3,6 +3,10 @@
 
 const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput, describeDbError, confirmDestructive } = UI;
 
+// True-emoji glyphs (🗑 etc.) ignore `color` and render full-color on most
+// platforms, clashing with the rest of this monochrome menu icon set.
+const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>`;
+
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 // Only the two narrowing filter rows — a song tagged 'All ages' (or
 // untagged) matches both, so it never needs its own filter row.
@@ -553,7 +557,7 @@ function createSongsTab(container, ctx) {
       { icon: '⟳', label: 'Refresh', onClick: refreshData },
       ...(Auth.isAdmin() ? [{ icon: '⬇', label: 'Import songs', onClick: openImportSheet }] : []),
       { icon: '⬆', label: 'Export all songs', onClick: exportSongsJSON },
-      ...(Auth.isAdmin() ? [{ icon: '🗑', label: 'Delete all songs', danger: true, onClick: confirmDeleteAllSongs }] : []),
+      ...(Auth.isAdmin() ? [{ icon: TRASH_ICON, label: 'Delete all songs', danger: true, onClick: confirmDeleteAllSongs }] : []),
       ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
   }

@@ -10,6 +10,11 @@ const DAY_PICKER_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const NO_BAND = '__no_band__';
 
 const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>`;
+// True-emoji glyphs (🗑, 📋, 🔗) ignore `color` and render full-color on
+// most platforms, clashing with the rest of this monochrome menu icon set.
+const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>`;
+const CLIPBOARD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/></svg>`;
+const LINK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
   const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive } = UI;
@@ -915,8 +920,8 @@ function createSetlistsTab(container, ctx) {
 
   function openShareMenu(setlist) {
     openActionMenu([
-      { icon: '📋', label: 'Share full setlist', onClick: () => shareText(setlist.name || 'Setlist', buildSetlistText(setlist)) },
-      { icon: '🔗', label: 'Share songs & links', onClick: () => shareText(setlist.name || 'Setlist', buildSongLinksText(setlist)) },
+      { icon: CLIPBOARD_ICON, label: 'Share full setlist', onClick: () => shareText(setlist.name || 'Setlist', buildSetlistText(setlist)) },
+      { icon: LINK_ICON, label: 'Share songs & links', onClick: () => shareText(setlist.name || 'Setlist', buildSongLinksText(setlist)) },
     ]);
   }
 
@@ -975,7 +980,7 @@ function createSetlistsTab(container, ctx) {
       { icon: '⬇', label: 'Import setlists', onClick: openSetlistImportSheet },
       { icon: '⬆', label: 'Export all setlists', onClick: exportAllSetlists },
       // Cuts across ownership, so it's admin-only rather than per-owner.
-      ...(Auth.isAdmin() ? [{ icon: '🗑', label: 'Delete all setlists', danger: true, onClick: confirmDeleteAllSetlists }] : []),
+      ...(Auth.isAdmin() ? [{ icon: TRASH_ICON, label: 'Delete all setlists', danger: true, onClick: confirmDeleteAllSetlists }] : []),
       ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
   }
@@ -1046,7 +1051,7 @@ function createSetlistsTab(container, ctx) {
   function openDetailMenu(draft, onEdit) {
     openActionMenu([
       { icon: '✎', label: 'Edit setlist', onClick: onEdit },
-      { icon: '🗑', label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
+      { icon: TRASH_ICON, label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
     ]);
   }
 

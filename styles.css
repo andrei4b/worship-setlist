@@ -575,8 +575,15 @@ a { color: var(--accent); }
 }
 .menu-item:last-child { border-bottom: none; }
 .menu-item.is-danger { color: var(--danger); }
-.menu-item .icon { width: 20px; text-align: center; color: var(--ink-soft); }
+.menu-item .icon {
+  width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+}
 .menu-item.is-danger .icon { color: var(--danger); }
+.menu-item .icon svg { width: 18px; height: 18px; }
 
 /* ============ Page view transitions ============ */
 .page-view {
