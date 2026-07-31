@@ -10,11 +10,17 @@ const DAY_PICKER_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const NO_BAND = '__no_band__';
 
 const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>`;
-// True-emoji glyphs (🗑, 📋, 🔗) ignore `color` and render full-color on
-// most platforms, clashing with the rest of this monochrome menu icon set.
+// All the menu icons use inline SVG, not text/emoji glyphs — plain Unicode
+// symbol characters render with inconsistent weight/style across platform
+// fonts (and true emoji like 🗑 ignore `color` entirely, rendering full-color
+// on most platforms), so a mixed set never looks visually uniform.
 const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>`;
 const CLIPBOARD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/></svg>`;
 const LINK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+const REFRESH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>`;
+const DOWNLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>`;
+const UPLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 21h16"/></svg>`;
+const EDIT_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
   const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive } = UI;
@@ -976,9 +982,9 @@ function createSetlistsTab(container, ctx) {
   // ── Setlists list 3-dot menu ───────────────────────────────────────────
   function openSetlistsMenu() {
     openActionMenu([
-      { icon: '⟳', label: 'Refresh', onClick: refreshData },
-      { icon: '⬇', label: 'Import setlists', onClick: openSetlistImportSheet },
-      { icon: '⬆', label: 'Export all setlists', onClick: exportAllSetlists },
+      { icon: REFRESH_ICON, label: 'Refresh', onClick: refreshData },
+      { icon: DOWNLOAD_ICON, label: 'Import setlists', onClick: openSetlistImportSheet },
+      { icon: UPLOAD_ICON, label: 'Export all setlists', onClick: exportAllSetlists },
       // Cuts across ownership, so it's admin-only rather than per-owner.
       ...(Auth.isAdmin() ? [{ icon: TRASH_ICON, label: 'Delete all setlists', danger: true, onClick: confirmDeleteAllSetlists }] : []),
       ...(window.accountMenuItems ? window.accountMenuItems() : []),
@@ -1050,7 +1056,7 @@ function createSetlistsTab(container, ctx) {
   // ── Detail page 3-dot menu ─────────────────────────────────────────────
   function openDetailMenu(draft, onEdit) {
     openActionMenu([
-      { icon: '✎', label: 'Edit setlist', onClick: onEdit },
+      { icon: EDIT_ICON, label: 'Edit setlist', onClick: onEdit },
       { icon: TRASH_ICON, label: 'Delete setlist', danger: true, onClick: () => deleteSetlistFromDetail(draft) },
     ]);
   }

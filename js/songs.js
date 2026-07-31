@@ -3,9 +3,14 @@
 
 const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput, describeDbError, confirmDestructive } = UI;
 
-// True-emoji glyphs (🗑 etc.) ignore `color` and render full-color on most
-// platforms, clashing with the rest of this monochrome menu icon set.
+// All the menu icons use inline SVG, not text/emoji glyphs — plain Unicode
+// symbol characters render with inconsistent weight/style across platform
+// fonts (and true emoji like 🗑 ignore `color` entirely, rendering full-color
+// on most platforms), so a mixed set never looks visually uniform.
 const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>`;
+const REFRESH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>`;
+const DOWNLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>`;
+const UPLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 21h16"/></svg>`;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 // Only the two narrowing filter rows — a song tagged 'All ages' (or
@@ -554,9 +559,9 @@ function createSongsTab(container, ctx) {
   // ---- 3-dot menu ----
   function openSongsMenu() {
     openActionMenu([
-      { icon: '⟳', label: 'Refresh', onClick: refreshData },
-      ...(Auth.isAdmin() ? [{ icon: '⬇', label: 'Import songs', onClick: openImportSheet }] : []),
-      { icon: '⬆', label: 'Export all songs', onClick: exportSongsJSON },
+      { icon: REFRESH_ICON, label: 'Refresh', onClick: refreshData },
+      ...(Auth.isAdmin() ? [{ icon: DOWNLOAD_ICON, label: 'Import songs', onClick: openImportSheet }] : []),
+      { icon: UPLOAD_ICON, label: 'Export all songs', onClick: exportSongsJSON },
       ...(Auth.isAdmin() ? [{ icon: TRASH_ICON, label: 'Delete all songs', danger: true, onClick: confirmDeleteAllSongs }] : []),
       ...(window.accountMenuItems ? window.accountMenuItems() : []),
     ]);
