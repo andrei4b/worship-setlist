@@ -21,6 +21,7 @@ const REFRESH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 const DOWNLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>`;
 const UPLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 21h16"/></svg>`;
 const EDIT_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+const LIST_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
   const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive } = UI;
@@ -195,7 +196,7 @@ function createSetlistsTab(container, ctx) {
     const header = el('div', { class: 'app-header' },
       el('div', { class: 'app-header-top' },
         el('h1', { class: 'app-title' },
-          el('span', { class: 'mark' }, '☰'),
+          el('span', { class: 'mark', html: LIST_ICON }),
           'Setlists',
           el('span', { class: 'title-count' }, `(${setlists.length})`)
         ),

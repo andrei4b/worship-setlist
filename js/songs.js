@@ -11,6 +11,7 @@ const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const REFRESH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>`;
 const DOWNLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>`;
 const UPLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 21h16"/></svg>`;
+const MUSIC_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 // Only the two narrowing filter rows — a song tagged 'All ages' (or
@@ -83,7 +84,7 @@ function createSongsTab(container, ctx) {
     const header = el('div', { class: 'app-header' },
       el('div', { class: 'app-header-top' },
         el('h1', { class: 'app-title' },
-          el('span', { class: 'mark' }, '♪'),
+          el('span', { class: 'mark', html: MUSIC_ICON }),
           'Songs',
           el('span', { class: 'title-count' }, `(${songs.length})`)
         ),

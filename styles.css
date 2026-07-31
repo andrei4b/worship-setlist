@@ -98,7 +98,8 @@ a { color: var(--accent); }
   align-items: baseline;
   gap: 8px;
 }
-.app-title .mark { color: var(--accent); font-size: 20px; }
+.app-title .mark { color: var(--accent); display: inline-flex; align-items: center; }
+.app-title .mark svg { width: 22px; height: 22px; }
 
 .searchbar {
   margin-top: 12px;
