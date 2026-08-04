@@ -58,8 +58,13 @@ body {
    #app's box directly to the browser's actual rendered viewport instead
    of a computed length, which mobile Chrome handles far more reliably
    across toolbar show/hide and cold starts. (Same fix already proven out
-   in the talmaci project.) */
-#app { position: fixed; inset: 0; display: flex; flex-direction: column; overflow: hidden; }
+   in the talmaci project.)
+   overflow-y:auto (not hidden) — unlike talmaci, this app doesn't have
+   its own inner flex/overflow scroll regions; each tab's list scrolls via
+   .app-header's position:sticky riding on a scrolling ancestor, and with
+   html/body now overflow:hidden, #app itself has to be that ancestor or
+   nothing on the page can scroll at all. */
+#app { position: fixed; inset: 0; display: flex; flex-direction: column; overflow-y: auto; }
 
 button { font-family: inherit; }
 input, textarea, select { font-family: inherit; }
