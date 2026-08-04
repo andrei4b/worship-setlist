@@ -44,12 +44,22 @@ html, body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
   height: 100%;
+  overflow: hidden;
 }
 body {
   display: flex;
   flex-direction: column;
 }
-#app { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+/* Fixed + inset:0 instead of height:100vh/100dvh/var(--vvh) — a viewport-
+   unit height can resolve too tall right after a fresh install/reload
+   (mobile Chrome's dynamic toolbar/status-bar inset hasn't settled yet),
+   and since #app was in normal document flow, anything centered within
+   that height visibly re-centers once it settles. Fixed positioning ties
+   #app's box directly to the browser's actual rendered viewport instead
+   of a computed length, which mobile Chrome handles far more reliably
+   across toolbar show/hide and cold starts. (Same fix already proven out
+   in the talmaci project.) */
+#app { position: fixed; inset: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 button { font-family: inherit; }
 input, textarea, select { font-family: inherit; }
@@ -903,20 +913,17 @@ a { color: var(--accent); }
 
 /* ============ Auth screens (sign-in / join group) ============ */
 .auth-screen {
-  /* Deliberately NOT vertically centered in a full-viewport-height box
-     (no flex:1/align-items:center/min-height here) — #app itself sizes
-     with 100vh/100dvh, which on some mobile browsers/WebViews doesn't
-     settle to its final value until just after first paint (the real
-     browser-chrome/status-bar height isn't known yet). Anything centered
-     within — or sized as a % of — that height visibly shifts once it
-     settles. A fixed pixel top offset (not vh/dvh/vvh at all) means this
-     screen's position never depends on viewport height in any degree, so
-     a later height correction just changes how much blank space is below
-     it — never a visible shift, however small.
-  */
+  /* Safe to vertically center again — #app is now position:fixed;inset:0
+     (see above), so its height is always the browser's true rendered
+     viewport, not a computed vh/dvh length that can resolve too tall for
+     a moment on a cold start. flex:1 here just fills that already-correct
+     height, no viewport unit needed on this element at all. */
+  flex: 1;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 64px calc(20px + var(--safe-bottom)) 24px;
+  padding: 24px calc(20px + var(--safe-bottom)) 24px;
+  overflow-y: auto;
 }
 .auth-card {
   width: 100%;
