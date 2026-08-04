@@ -908,8 +908,13 @@ a { color: var(--accent); }
   align-items: center;
   justify-content: center;
   padding: 24px calc(20px + var(--safe-bottom)) 24px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Not 100vh/100dvh — on some mobile browsers dvh doesn't settle to its
+     final value until just after first paint (once the real browser-chrome
+     height is known), so the centered card visibly re-centers/shifts a
+     moment later. --vvh is app.js's own visualViewport measurement (already
+     used for sheets/the FAB), available correctly from the very first
+     paint since it's computed at script load, before this screen renders. */
+  min-height: var(--vvh, 100dvh);
 }
 .auth-card {
   width: 100%;
