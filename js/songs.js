@@ -22,8 +22,11 @@ const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 const AGE_GROUP_FILTERS = ['Youth', 'Congregation'];
 const INDEX_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
 
+// Diacritic-normalized (Î/Â/Ă/Ș/Ț -> I/A/A/S/T) so a Romanian title groups
+// under its base Latin letter instead of falling through to the '#'
+// catch-all — matches the same normalization already used for search.
 function groupLetter(title) {
-  const c = (title || '').trim().charAt(0).toUpperCase();
+  const c = normalizeForSearch(title).trim().charAt(0).toUpperCase();
   return /[A-Z]/.test(c) ? c : '#';
 }
 
