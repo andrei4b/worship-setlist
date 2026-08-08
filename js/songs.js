@@ -219,13 +219,14 @@ function createSongsTab(container, ctx) {
       if (target) {
         const rowEl = listWrap.querySelector(`[data-letter="${target}"]`);
         if (rowEl) {
-          // The page (not .app-main) is what actually scrolls, and the sticky
-          // header overlays the top of it, so scrollIntoView alone would land
-          // the row underneath the header instead of just below it.
+          // #app (not .app-main, not the page) is what actually scrolls, and
+          // the sticky header overlays the top of it, so scrollIntoView alone
+          // would land the row underneath the header instead of just below it.
+          const scroller = document.getElementById('app');
           const header = document.querySelector('.app-header');
           const headerHeight = header ? header.getBoundingClientRect().height : 0;
-          const rowTop = rowEl.getBoundingClientRect().top + window.scrollY;
-          window.scrollTo({ top: Math.max(0, rowTop - headerHeight - 8), behavior: 'auto' });
+          const rowTop = rowEl.getBoundingClientRect().top + scroller.scrollTop;
+          scroller.scrollTo({ top: Math.max(0, rowTop - headerHeight - 8), behavior: 'auto' });
         }
       }
     }
