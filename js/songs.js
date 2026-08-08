@@ -71,6 +71,15 @@ function createSongsTab(container, ctx) {
     return ag === filter || ag === 'All ages';
   }
 
+  // #app (not the page) is the actual scroll container — see the A-Z
+  // scrubber for the same pattern. Applying a filter should always land
+  // back at the top of the (now-different) results, not wherever the
+  // previous list happened to be scrolled to.
+  function scrollListToTop() {
+    const scroller = document.getElementById('app');
+    if (scroller) scroller.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
   function getFiltered() {
     let list = songs;
     if (query.trim()) {
@@ -108,7 +117,7 @@ function createSongsTab(container, ctx) {
         ...PACE_OPTIONS.map(pace =>
           el('button', {
             class: `chip-btn chip-btn--pace-${pace.toLowerCase()}` + (paceFilter === pace ? ' is-active' : ''),
-            onclick: () => { paceFilter = paceFilter === pace ? null : pace; renderList(); updatePaceChips(); }
+            onclick: () => { paceFilter = paceFilter === pace ? null : pace; renderList(); updatePaceChips(); scrollListToTop(); }
           }, pace)
         ),
         el('button', {
@@ -155,7 +164,7 @@ function createSongsTab(container, ctx) {
     const listEl = el('div', { class: 'picker-list' },
       ...options.map(ag => el('div', {
         class: 'picker-row' + (ageGroupFilter === ag ? ' is-selected' : ''),
-        onclick: () => { ageGroupFilter = ag; closeSheet(); render(); }
+        onclick: () => { ageGroupFilter = ag; closeSheet(); render(); scrollListToTop(); }
       }, el('div', { class: 'picker-row-title' }, ag === null ? 'All ages' : ag)))
     );
     openSheet('Filter by age group', listEl, null);

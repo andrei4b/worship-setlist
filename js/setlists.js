@@ -124,6 +124,15 @@ function createSetlistsTab(container, ctx) {
     });
   }
 
+  // #app (not the page) is the actual scroll container — see the Songs
+  // tab's A-Z scrubber for the same pattern. Applying a filter should
+  // always land back at the top of the (now-different) results, not
+  // wherever the previous list happened to be scrolled to.
+  function scrollListToTop() {
+    const scroller = document.getElementById('app');
+    if (scroller) scroller.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
   // ── List view ──────────────────────────────────────────────────────────
   function getFiltered() {
     let list = setlists;
@@ -250,7 +259,7 @@ function createSetlistsTab(container, ctx) {
     const listEl = el('div', { class: 'picker-list' },
       ...options.map(day => el('div', {
         class: 'picker-row' + (dayFilter === day ? ' is-selected' : ''),
-        onclick: () => { dayFilter = day; closeSheet(); renderList(); }
+        onclick: () => { dayFilter = day; closeSheet(); renderList(); scrollListToTop(); }
       }, el('div', { class: 'picker-row-title' }, day === null ? 'All days' : dayBucketLabel(day))))
     );
     openSheet('Filter by day', listEl, null);
@@ -269,7 +278,7 @@ function createSetlistsTab(container, ctx) {
     const listEl = el('div', { class: 'picker-list' },
       ...options.map(band => el('div', {
         class: 'picker-row' + (bandFilter === band ? ' is-selected' : ''),
-        onclick: () => { bandFilter = band; closeSheet(); renderList(); }
+        onclick: () => { bandFilter = band; closeSheet(); renderList(); scrollListToTop(); }
       }, el('div', { class: 'picker-row-title' }, band === null ? 'All bands' : band === NO_BAND ? 'No band' : band)))
     );
     openSheet('Filter by band', listEl, null);
