@@ -50,21 +50,39 @@ body {
   display: flex;
   flex-direction: column;
 }
-/* Fixed + inset:0 instead of height:100vh/100dvh/var(--vvh) — a viewport-
-   unit height can resolve too tall right after a fresh install/reload
-   (mobile Chrome's dynamic toolbar/status-bar inset hasn't settled yet),
-   and since #app was in normal document flow, anything centered within
-   that height visibly re-centers once it settles. Fixed positioning ties
-   #app's box directly to the browser's actual rendered viewport instead
-   of a computed length, which mobile Chrome handles far more reliably
-   across toolbar show/hide and cold starts. (Same fix already proven out
-   in the talmaci project.)
-   overflow-y:auto (not hidden) — unlike talmaci, this app doesn't have
-   its own inner flex/overflow scroll regions; each tab's list scrolls via
+/* Fixed positioning (not normal document flow + a computed height) ties
+   #app's box directly to the browser's actual rendered viewport instead of
+   a length like 100vh/100dvh that can resolve too tall right after a fresh
+   install/reload, before mobile Chrome's dynamic toolbar/status-bar inset
+   settles — anything centered within a height like that visibly re-centers
+   once it settles. (Same fix already proven out in the talmaci project.)
+
+   top/height use --vv-top/--vvh (app.js's own visualViewport tracking,
+   already used by .sheet-backdrop) rather than plain inset:0, so #app also
+   follows the keyboard: on-screen keyboards shrink AND can shift the
+   *visual* viewport without moving the *layout* viewport that inset:0
+   would pin to, so a plain inset:0 #app can end up with its top edge (and
+   its sticky header) sitting above what's actually visible once a keyboard
+   is open — invisible from the very first scroll, not just re-centering
+   once at first paint like the cold-launch case above. That cold-launch
+   case is unaffected: the keyboard is never open at first paint, and
+   --vv-top/--vvh are only ever wrong for a transient instant right at
+   startup, long before a user could focus a field and open one.
+
+   overflow-y:auto (not hidden) — unlike talmaci, this app doesn't have its
+   own inner flex/overflow scroll regions; each tab's list scrolls via
    .app-header's position:sticky riding on a scrolling ancestor, and with
-   html/body now overflow:hidden, #app itself has to be that ancestor or
+   html/body overflow:hidden, #app itself has to be that ancestor or
    nothing on the page can scroll at all. */
-#app { position: fixed; inset: 0; display: flex; flex-direction: column; overflow-y: auto; }
+#app {
+  position: fixed;
+  left: 0; right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vvh, 100dvh);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
 
 button { font-family: inherit; }
 input, textarea, select { font-family: inherit; }
