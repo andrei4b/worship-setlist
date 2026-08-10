@@ -217,7 +217,7 @@ function createSetlistsTab(container, ctx) {
           type: 'search',
           placeholder: 'Search setlists…',
           value: query,
-          oninput: debounce((e) => { query = e.target.value; renderListItems(); }, 150)
+          oninput: debounce((e) => { query = e.target.value; renderListItems(); scrollListToTop(); }, 150)
         })
       ),
       el('div', { class: 'sort-row' },

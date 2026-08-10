@@ -110,7 +110,7 @@ function createSongsTab(container, ctx) {
           type: 'search',
           placeholder: 'Search songs…',
           value: query,
-          oninput: debounce((e) => { query = e.target.value; renderList(); }, 150)
+          oninput: debounce((e) => { query = e.target.value; renderList(); scrollListToTop(); }, 150)
         })
       ),
       el('div', { class: 'sort-row' },
