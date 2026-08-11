@@ -651,11 +651,29 @@ function createSetlistsTab(container, ctx) {
       });
     }
 
-    async function removeItem(idx) {
-      draft.items.splice(idx, 1);
-      await autoSave(draft);
-      renderItems();
-      toast('Removed item');
+    function removeItem(idx) {
+      const item = draft.items[idx];
+      const song = item.type === 'song' ? getSongById(item.songId) : null;
+      const label = item.type === 'song'
+        ? (song ? song.title : 'this song')
+        : (item.text ? item.text : 'this text entry');
+      confirmAction({
+        title: 'Remove item',
+        message: `Remove "${label}" from this setlist?`,
+        confirmLabel: 'Remove',
+        danger: true,
+        onConfirm: async () => {
+          // Look up by reference rather than trusting idx — the confirm
+          // sheet is modal so idx can't go stale from other list edits, but
+          // this is cheap insurance either way.
+          const i = draft.items.indexOf(item);
+          if (i === -1) return;
+          draft.items.splice(i, 1);
+          await autoSave(draft);
+          renderItems();
+          toast('Removed item');
+        }
+      });
     }
 
     function editItem(idx) {
