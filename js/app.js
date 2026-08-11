@@ -313,23 +313,33 @@ async function showMembers() {
   const rows = members.map(m => {
     const label = m.displayName || m.email || m.uid;
     const roleBtn = $el('button', { class: 'btn btn--secondary btn--sm' }, m.role === 'admin' ? 'Admin ▾' : 'User ▾');
-    roleBtn.addEventListener('click', async () => {
+    roleBtn.addEventListener('click', () => {
       const nextRole = m.role === 'admin' ? 'user' : 'admin';
+      const applyRoleChange = async () => {
+        roleBtn.disabled = true;
+        try {
+          await Auth.setMemberRole(m.uid, nextRole);
+          closeSheet();
+          UI.toast('Updated ' + label);
+          showMembers();
+        } catch (err) {
+          UI.toast(err.message || 'Could not update role', { variant: 'danger' });
+          roleBtn.disabled = false;
+        }
+      };
       if (m.uid === me.uid && nextRole === 'user') {
         const hasOtherAdmin = members.some(x => x.uid !== me.uid && x.role === 'admin');
         if (!hasOtherAdmin) { UI.toast('You’re the only admin — promote someone else first', { variant: 'danger' }); return; }
-        if (!confirm('Remove your own admin access?')) return;
+        UI.confirmAction({
+          title: 'Remove admin access',
+          message: 'Remove your own admin access?',
+          confirmLabel: 'Remove',
+          danger: true,
+          onConfirm: applyRoleChange
+        });
+        return;
       }
-      roleBtn.disabled = true;
-      try {
-        await Auth.setMemberRole(m.uid, nextRole);
-        closeSheet();
-        UI.toast('Updated ' + label);
-        showMembers();
-      } catch (err) {
-        UI.toast(err.message || 'Could not update role', { variant: 'danger' });
-        roleBtn.disabled = false;
-      }
+      applyRoleChange();
     });
     return $el('div', { class: 'picker-row' },
       $el('div', null,

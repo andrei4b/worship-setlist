@@ -25,7 +25,7 @@ const LIST_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const BACK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive, confirmAction } = UI;
 
   let setlists = [];
   let query = '';
@@ -1089,16 +1089,23 @@ function createSetlistsTab(container, ctx) {
     ]);
   }
 
-  async function deleteSetlistFromDetail(draft) {
-    if (!confirm(`Delete "${draft.name || 'this setlist'}"? This can't be undone.`)) return;
-    try {
-      await DB.deleteSetlist(draft.id);
-    } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
-    setlists = setlists.filter(s => s.id !== draft.id);
-    window.setPageBackHandler(null);
-    window.silentHistoryBack();
-    showList();
-    toast('Setlist deleted');
+  function deleteSetlistFromDetail(draft) {
+    confirmAction({
+      title: 'Delete setlist',
+      message: `Delete "${draft.name || 'this setlist'}"? This can't be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await DB.deleteSetlist(draft.id);
+        } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
+        setlists = setlists.filter(s => s.id !== draft.id);
+        window.setPageBackHandler(null);
+        window.silentHistoryBack();
+        showList();
+        toast('Setlist deleted');
+      }
+    });
   }
 
   function formField(label, inputEl, hint) {

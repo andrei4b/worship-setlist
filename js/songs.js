@@ -1,7 +1,7 @@
 /* songs.js — Songs tab: list, search, sort, CRUD, import/export */
 (function () {
 
-const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput, describeDbError, confirmDestructive } = UI;
+const { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, parseDateInput, describeDbError, confirmDestructive, confirmAction } = UI;
 
 // All the menu icons use inline SVG, not text/emoji glyphs — plain Unicode
 // symbol characters render with inconsistent weight/style across platform
@@ -532,15 +532,22 @@ function createSongsTab(container, ctx) {
     const footer = el('div', { class: 'sheet-footer' },
       isEdit ? el('button', {
         class: 'btn btn--danger',
-        onclick: async () => {
-          if (!confirm(`Delete "${draft.title}"? This can't be undone.`)) return;
-          try {
-            await DB.deleteSong(draft.id);
-          } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
-          songs = songs.filter(s => s.id !== draft.id);
-          closeSheet();
-          render();
-          toast('Song deleted');
+        onclick: () => {
+          confirmAction({
+            title: 'Delete song',
+            message: `Delete "${draft.title}"? This can't be undone.`,
+            confirmLabel: 'Delete',
+            danger: true,
+            onConfirm: async () => {
+              try {
+                await DB.deleteSong(draft.id);
+              } catch (err) { toast(describeDbError(err), { variant: 'danger' }); return; }
+              songs = songs.filter(s => s.id !== draft.id);
+              closeSheet();
+              render();
+              toast('Song deleted');
+            }
+          });
         }
       }, 'Delete') : null,
       el('button', {

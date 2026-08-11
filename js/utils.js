@@ -92,6 +92,26 @@ function confirmDestructive({ title, message, confirmWord, onConfirm }) {
   window.openSheet(title, body, el('div', { class: 'sheet-footer' }, btn));
 }
 
+// ---- App-styled confirmation for single-item actions ----
+// Replaces the browser's native confirm() (which looks nothing like the
+// rest of the app) for lower-stakes, single-item cases — deleting one song
+// or setlist, changing your own role — where confirmDestructive's heavier
+// "type a word" flow would be overkill. Can be opened on top of an
+// already-open sheet (sheets stack); the 220ms delay before onConfirm
+// mirrors openActionMenu's own pattern, giving closeSheet's history.back()
+// time to settle before onConfirm potentially closes another sheet itself.
+function confirmAction({ title, message, confirmLabel, danger, onConfirm }) {
+  const btn = el('button', {
+    class: 'btn btn--block ' + (danger ? 'btn--danger' : 'btn--primary'),
+    onclick: () => {
+      window.closeSheet();
+      setTimeout(() => onConfirm(), 220);
+    }
+  }, confirmLabel || 'Confirm');
+  const body = el('p', { class: 'field-hint', style: 'margin:0' }, message);
+  window.openSheet(title, body, el('div', { class: 'sheet-footer' }, btn));
+}
+
 // ---- Debounce ----
 function debounce(fn, wait) {
   let timer;
@@ -202,7 +222,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput, describeDbError, confirmDestructive };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput, describeDbError, confirmDestructive, confirmAction };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 
