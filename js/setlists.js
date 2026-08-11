@@ -523,7 +523,7 @@ function createSetlistsTab(container, ctx) {
         const song = getSongById(item.songId);
         const title = song ? song.title : '(song removed)';
         const effectiveKey = item.keyOverride || (song ? song.key : '');
-        const effectiveTempo = song ? song.tempo : '';
+        const effectiveTempo = item.tempoOverride || (song ? song.tempo : '');
 
         const metaBits = [];
         if (effectiveKey) {
@@ -531,7 +531,11 @@ function createSetlistsTab(container, ctx) {
             class: 'setlist-item-inline-meta' + (item.keyOverride ? ' is-overridden' : '')
           }, effectiveKey));
         }
-        if (effectiveTempo) metaBits.push(el('span', { class: 'setlist-item-inline-meta' }, effectiveTempo));
+        if (effectiveTempo) {
+          metaBits.push(el('span', {
+            class: 'setlist-item-inline-meta' + (item.tempoOverride ? ' is-overridden' : '')
+          }, effectiveTempo));
+        }
 
         const titleBits = [el('span', { class: 'setlist-item-title' }, title)];
         if (metaBits.length) titleBits.push(el('div', { class: 'setlist-item-meta-group' }, ...metaBits));
@@ -664,15 +668,23 @@ function createSetlistsTab(container, ctx) {
     function openSongOverrideEditor(item, onSave) {
       const song = getSongById(item.songId);
       const keyInput = el('input', { type: 'text', value: item.keyOverride || '', placeholder: song ? `Default: ${song.key || '—'}` : '' });
+      const tempoInput = el('input', { type: 'text', value: item.tempoOverride || '', placeholder: song ? `Default: ${song.tempo || '—'}` : '' });
+      const linkInput = el('input', { type: 'url', value: item.linkOverride || '', placeholder: song ? `Default: ${song.link || '—'}` : '' });
       const notesInput = el('textarea', { placeholder: 'Optional notes (e.g. capo 2, start quiet)' }, item.notes || '');
       const body = el('div', null,
         el('p', { style: 'font-weight:600;margin:0 0 14px;font-family:var(--font-display);font-size:16px;' }, song ? song.title : '(song removed)'),
-        formField('Key override', keyInput, 'Leave blank to use the song\u2019s default key'),
+        el('div', { class: 'field-row' },
+          formField('Key override', keyInput, 'Leave blank for default'),
+          formField('Tempo override', tempoInput, 'Leave blank for default')
+        ),
+        formField('Link override', linkInput, 'Leave blank for default'),
         formField('Notes', notesInput)
       );
       const footer = el('div', { class: 'sheet-footer' },
         el('button', { class: 'btn btn--primary btn--block', onclick: () => {
           item.keyOverride = keyInput.value.trim();
+          item.tempoOverride = tempoInput.value.trim();
+          item.linkOverride = linkInput.value.trim();
           item.notes = notesInput.value.trim();
           closeSheet(); onSave();
         }}, 'Save')
@@ -712,7 +724,7 @@ function createSetlistsTab(container, ctx) {
         }
         filtered.forEach(song => {
           listEl.appendChild(el('div', { class: 'picker-row', onclick: async () => {
-            draft.items.push({ type: 'song', songId: song.id, keyOverride: '', notes: '' });
+            draft.items.push({ type: 'song', songId: song.id, keyOverride: '', tempoOverride: '', linkOverride: '', notes: '' });
             closeSheet();
             await autoSave(draft);
             renderItems();
@@ -902,7 +914,9 @@ function createSetlistsTab(container, ctx) {
       if (item.type === 'text') return withTextEntryPrefix(item.text || '');
       const song = getSongById(item.songId);
       if (!song) return '(song removed)';
-      return `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
+      const key = item.keyOverride || song.key || '—';
+      const tempo = item.tempoOverride || song.tempo || '—';
+      return `${song.title} (${key}) - ${tempo}`;
     });
     return (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
   }
@@ -915,8 +929,11 @@ function createSetlistsTab(container, ctx) {
       .map(item => {
         const song = getSongById(item.songId);
         if (!song) return '(song removed)';
-        const songLine = `${song.title} (${item.keyOverride || song.key || '—'}) - ${song.tempo || '—'}`;
-        return song.link ? `${songLine}\n${song.link}` : songLine;
+        const key = item.keyOverride || song.key || '—';
+        const tempo = item.tempoOverride || song.tempo || '—';
+        const link = item.linkOverride || song.link;
+        const songLine = `${song.title} (${key}) - ${tempo}`;
+        return link ? `${songLine}\n${link}` : songLine;
       });
     return (setlist.name ? setlist.name + '\n\n' : '') + blocks.join('\n\n');
   }
