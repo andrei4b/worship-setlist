@@ -793,7 +793,7 @@ function createSetlistsTab(container, ctx) {
         recent.forEach(text => suggestionsWrap.appendChild(el('button', {
           class: 'chip-btn',
           type: 'button',
-          onclick: () => { textInput.value = text; textInput.focus(); }
+          onclick: () => { textInput.value = text; }
         }, text)));
         suggestionsSection.style.display = '';
       }).catch(() => {});
