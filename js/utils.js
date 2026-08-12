@@ -32,15 +32,22 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
-// ---- Diacritic-insensitive search ----
-// So searching "a" also matches "ă"/"â", "s" matches "ș"/"ş", "t" matches "ț"/"ţ", etc.
+// ---- Diacritic- and punctuation-insensitive search ----
+// So searching "a" also matches "ă"/"â", "s" matches "ș"/"ş", "t" matches
+// "ț"/"ţ", etc. Commas become a space (not just removed) so "word,other"
+// still reads as two words rather than merging into one; the following
+// whitespace-collapse then cleans up any doubled spaces that leaves behind
+// (a comma already followed by a space, or one typed without either side).
 function normalizeForSearch(str) {
   return String(str ?? '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[șş]/g, 's')
-    .replace(/[țţ]/g, 't');
+    .replace(/[țţ]/g, 't')
+    .replace(/,/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // ---- Toast ----
