@@ -722,8 +722,13 @@ a { color: var(--accent); }
   z-index: 100;
   box-shadow: var(--shadow-pop);
   border-radius: var(--radius-s);
-  padding: 7px 8px;
-  background: var(--paper);
+  /* No padding/background of its own — the row's actual background lives
+     on .setlist-item-row-content inside it. Extra padding here plus the
+     old --paper (cream) fill showed through as a mismatched margin around
+     the (now white, --paper-raised) row while dragging. overflow:hidden
+     clips that inner content to this box's rounded corners instead. */
+  background: var(--paper-raised);
+  overflow: hidden;
   opacity: 0.95;
 }
 .drag-placeholder {
@@ -744,7 +749,7 @@ a { color: var(--accent); }
   padding: 4px 0;
 }
 .drag-handle:active { cursor: grabbing; }
-.drag-handle svg { width: 20px; height: 20px; }
+.drag-handle svg { width: 20px; height: 20px; display: block; }
 
 /* ============ Setlists tab container needs flex ============ */
 
@@ -813,6 +818,13 @@ a { color: var(--accent); }
   flex: 1;
   min-width: 0;
   touch-action: pan-y;
+  /* Matches .drag-handle's own natural height (20px icon + 4px top/bottom
+     padding) so a read-only row (no handle at all) renders exactly as
+     tall as an editable one, instead of shrinking to fit just the text. */
+  min-height: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .setlist-item-titleline {
   display: flex;
