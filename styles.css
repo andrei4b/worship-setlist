@@ -744,11 +744,7 @@ a { color: var(--accent); }
   padding: 4px 0;
 }
 .drag-handle:active { cursor: grabbing; }
-.drag-dots {
-  font-size: 20px;
-  line-height: 1;
-  letter-spacing: -2px;
-}
+.drag-handle svg { width: 20px; height: 20px; }
 
 /* ============ Setlists tab container needs flex ============ */
 
@@ -805,13 +801,13 @@ a { color: var(--accent); }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 16px 10px 10px;
+  padding: 10px 10px 10px 16px;
   background: var(--paper-raised);
   position: relative;
 }
-/* No drag handle to provide left-side spacing on a read-only setlist —
+/* No drag handle to provide right-side spacing on a read-only setlist —
    add it back directly so the row doesn't sit flush against the edge. */
-.setlist-item-row-content.is-readonly { padding-left: 20px; }
+.setlist-item-row-content.is-readonly { padding-right: 20px; }
 .setlist-item-row-content.is-swipe-animating { transition: transform 0.2s ease; }
 .setlist-item-body {
   flex: 1;
