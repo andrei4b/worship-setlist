@@ -31,6 +31,14 @@ function createSetlistsTab(container, ctx) {
   let query = '';
   let dayFilter = null;
   let bandFilter = null;
+  // Id of the setlist currently shown in the detail view, or null when the
+  // list view is what's showing. Tab-switching only toggles the whole tab's
+  // container display:none — it never touches listView/detailView inside
+  // it — so a detail view left open before switching to Songs is still the
+  // active sub-view when you switch back, and needs its own re-render (not
+  // just renderList()) to pick up a change made while you were away, e.g.
+  // adding a song to it from the Songs tab's swipe-to-add sheet.
+  let openDetailId = null;
 
   // Two child views inside container: list and detail
   const listView  = el('div', { class: 'page-view' });
@@ -38,12 +46,25 @@ function createSetlistsTab(container, ctx) {
   container.appendChild(listView);
   container.appendChild(detailView);
 
+  // Re-renders the open detail view from the current in-memory `setlists`
+  // (already up to date by the time this is called) if that's what's
+  // actually showing right now — a no-op otherwise.
+  function refreshOpenDetail() {
+    if (openDetailId === null || detailView.classList.contains('page-view--hidden')) return;
+    const fresh = setlists.find(s => s.id === openDetailId);
+    if (fresh) renderDetail(fresh);
+  }
+
   async function load() {
     setlists = await DB.getSetlists();
     renderList();
+    refreshOpenDetail();
   }
 
-  function refresh() { renderList(); }
+  function refresh() {
+    renderList();
+    refreshOpenDetail();
+  }
 
   function getSongById(id) {
     return ctx.getSongs().find(s => s.id === id) || null;
@@ -87,6 +108,7 @@ function createSetlistsTab(container, ctx) {
 
   // ── Page transitions ───────────────────────────────────────────────────
   function showDetail(setlist, opts) {
+    openDetailId = setlist.id;
     renderDetail(setlist);
     listView.classList.add('page-view--hidden');
     detailView.classList.remove('page-view--hidden');
@@ -102,6 +124,7 @@ function createSetlistsTab(container, ctx) {
   }
 
   function showList() {
+    openDetailId = null;
     window.setPageBackHandler(null);
     listView.classList.remove('page-view--hidden');
     detailView.classList.add('page-view--slide-out');
