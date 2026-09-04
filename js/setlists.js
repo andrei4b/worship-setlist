@@ -950,14 +950,23 @@ function createSetlistsTab(container, ctx) {
   }
 
   // ── Share / clipboard export ────────────────────────────────────────────
+  // "Title (Key) - Tempo", omitting whichever of key/tempo isn't set
+  // instead of showing a placeholder dash for it.
+  function songLine(song, item) {
+    const key = item.keyOverride || song.key || '';
+    const tempo = item.tempoOverride || song.tempo || '';
+    let line = song.title;
+    if (key) line += ` (${key})`;
+    if (tempo) line += ` - ${tempo}`;
+    return line;
+  }
+
   function buildSetlistText(setlist) {
     const lines = (setlist.items || []).map(item => {
       if (item.type === 'text') return withTextEntryPrefix(item.text || '');
       const song = getSongById(item.songId);
       if (!song) return '(song removed)';
-      const key = item.keyOverride || song.key || '—';
-      const tempo = item.tempoOverride || song.tempo || '—';
-      return `${song.title} (${key}) - ${tempo}`;
+      return songLine(song, item);
     });
     return (setlist.name ? setlist.name + '\n\n' : '') + lines.join('\n');
   }
@@ -970,11 +979,9 @@ function createSetlistsTab(container, ctx) {
       .map(item => {
         const song = getSongById(item.songId);
         if (!song) return '(song removed)';
-        const key = item.keyOverride || song.key || '—';
-        const tempo = item.tempoOverride || song.tempo || '—';
         const link = item.linkOverride || song.link;
-        const songLine = `${song.title} (${key}) - ${tempo}`;
-        return link ? `${songLine}\n${link}` : songLine;
+        const line = songLine(song, item);
+        return link ? `${line}\n${link}` : line;
       });
     return (setlist.name ? setlist.name + '\n\n' : '') + blocks.join('\n\n');
   }
