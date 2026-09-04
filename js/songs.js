@@ -15,6 +15,10 @@ const UPLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // replaced), not the outlined two-note "music" icon used elsewhere —
 // closer to how the original glyph actually looked.
 const MUSIC_ICON = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>`;
+// A solid, exactly-centered plus (two crossing bars on the 24x24 midpoint)
+// for the FAB — a text "+" glyph sits off-center by a pixel or two due to
+// font metrics/baseline, which is visible at the FAB's size.
+const PLUS_ICON = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4z"/></svg>`;
 
 const PACE_OPTIONS = ['Slow', 'Medium', 'Fast'];
 // Only the two narrowing filter rows — a song tagged 'All ages' (or
@@ -139,7 +143,7 @@ function createSongsTab(container, ctx) {
 
     // Single FAB: add song — admin-only, songs are curated by admins.
     if (Auth.isAdmin()) {
-      root.appendChild(el('button', { class: 'fab', title: 'Add song', onclick: () => openSongForm(null) }, '+'));
+      root.appendChild(el('button', { class: 'fab', title: 'Add song', onclick: () => openSongForm(null) }, el('span', { html: PLUS_ICON })));
     }
 
     function renderList() {

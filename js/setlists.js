@@ -22,6 +22,10 @@ const DOWNLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 const UPLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 21h16"/></svg>`;
 const EDIT_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
 const LIST_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>`;
+// A solid, exactly-centered plus (two crossing bars on the 24x24 midpoint)
+// for the FAB — a text "+" glyph sits off-center by a pixel or two due to
+// font metrics/baseline, which is visible at the FAB's size.
+const PLUS_ICON = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4z"/></svg>`;
 const BACK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
@@ -263,7 +267,7 @@ function createSetlistsTab(container, ctx) {
     renderListItemsInto(listWrap);
 
     listView.appendChild(
-      el('button', { class: 'fab', title: 'New setlist', onclick: createNewSetlist }, '+')
+      el('button', { class: 'fab', title: 'New setlist', onclick: createNewSetlist }, el('span', { html: PLUS_ICON }))
     );
 
     function renderListItems() { renderListItemsInto(listWrap); }

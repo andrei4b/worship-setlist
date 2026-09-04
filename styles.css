@@ -419,8 +419,6 @@ a { color: var(--accent); }
   background: var(--accent);
   color: white;
   border: none;
-  font-size: 28px;
-  line-height: 1;
   box-shadow: var(--shadow-pop);
   display: flex;
   align-items: center;
@@ -430,6 +428,7 @@ a { color: var(--accent); }
   transition: bottom 0.15s ease;
 }
 .fab:active { background: var(--accent-press); transform: scale(0.96); }
+.fab svg { width: 26px; height: 26px; display: block; }
 
 .fab-row {
   position: fixed;
