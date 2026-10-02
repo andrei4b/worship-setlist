@@ -371,6 +371,27 @@ async function showInviteCode() {
 
 window.accountMenuItems = accountMenuItems;
 
+// ---- Recover from a long time backgrounded ----
+// Mobile browsers can suspend a backgrounded tab's network connections
+// (including Firestore's persistent one) or freeze the page outright, and
+// resuming doesn't always recover cleanly — the known symptom is a blank
+// white screen that never progresses past it, fixed only by fully closing
+// and reopening the app. A full reload after a long-enough gap sidesteps
+// whatever specifically went stale, since that's exactly what closing and
+// reopening already does — cheap to do since the service worker caches the
+// app shell (service-worker.js's BYPASS_HOSTS excludes Firestore/Auth
+// traffic, so the reload still hits the network for actual data, not a
+// stale cached response).
+let hiddenAt = null;
+const BACKGROUND_STALE_MS = 10 * 60 * 1000; // 10 minutes
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    hiddenAt = Date.now();
+  } else if (document.visibilityState === 'visible' && hiddenAt && Date.now() - hiddenAt > BACKGROUND_STALE_MS) {
+    window.location.reload();
+  }
+});
+
 Auth.onChange(() => renderGate());
 
 document.addEventListener('DOMContentLoaded', async () => {
