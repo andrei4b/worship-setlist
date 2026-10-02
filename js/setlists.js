@@ -678,27 +678,36 @@ function createSetlistsTab(container, ctx) {
       });
     }
 
-    function removeItem(idx) {
+    // Removes immediately rather than asking first, with a few seconds to
+    // undo via the toast — matches e.g. Google Keep's note-delete pattern.
+    // A swipe is already a deliberate, hard-to-trigger-by-accident gesture,
+    // so a blocking "are you sure?" step was mostly just friction; undo
+    // covers the rare genuine mistake without interrupting every real one.
+    async function removeItem(idx) {
       const item = draft.items[idx];
       const song = item.type === 'song' ? getSongById(item.songId) : null;
       const label = item.type === 'song'
         ? (song ? song.title : 'this song')
         : (item.text ? item.text : 'this text entry');
-      confirmAction({
-        title: 'Remove item',
-        message: `Remove "${label}" from this setlist?`,
-        confirmLabel: 'Remove',
-        danger: true,
-        onConfirm: async () => {
-          // Look up by reference rather than trusting idx — the confirm
-          // sheet is modal so idx can't go stale from other list edits, but
-          // this is cheap insurance either way.
-          const i = draft.items.indexOf(item);
-          if (i === -1) return;
-          draft.items.splice(i, 1);
-          await autoSave(draft);
-          renderItems();
-          toast('Removed item');
+
+      const originalIndex = draft.items.indexOf(item);
+      if (originalIndex === -1) return;
+      draft.items.splice(originalIndex, 1);
+      await autoSave(draft);
+      renderItems();
+
+      toast(`Removed "${label}"`, {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            // Clamp rather than trust originalIndex — other edits could
+            // have happened in the few seconds since (reordering, removing
+            // something else), so just land as close as still makes sense.
+            const at = Math.min(originalIndex, draft.items.length);
+            draft.items.splice(at, 0, item);
+            await autoSave(draft);
+            renderItems();
+          }
         }
       });
     }

@@ -51,15 +51,29 @@ function normalizeForSearch(str) {
 }
 
 // ---- Toast ----
+// opts.action = { label, onClick } adds a tappable action (e.g. "Undo") —
+// the toast-root container has pointer-events:none so taps pass through to
+// whatever's behind it, but the toast pill itself opts back in.
 function toast(message, opts = {}) {
   const root = document.getElementById('toast-root');
-  const t = el('div', { class: 'toast' + (opts.variant ? ' toast--' + opts.variant : '') }, message);
-  root.appendChild(t);
-  requestAnimationFrame(() => t.classList.add('toast--in'));
-  setTimeout(() => {
+  let dismissed = false;
+  const t = el('div', { class: 'toast' + (opts.variant ? ' toast--' + opts.variant : '') },
+    el('span', null, message),
+    opts.action ? el('button', {
+      type: 'button',
+      class: 'toast-action',
+      onclick: () => { dismiss(); opts.action.onClick(); }
+    }, opts.action.label) : null
+  );
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
     t.classList.remove('toast--in');
     setTimeout(() => t.remove(), 250);
-  }, opts.duration || 2200);
+  }
+  root.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('toast--in'));
+  setTimeout(dismiss, opts.duration || (opts.action ? 4500 : 2200));
 }
 
 // ---- Cloud write error -> friendly message ----
