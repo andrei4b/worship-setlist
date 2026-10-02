@@ -37,8 +37,17 @@
 
 <script>
 if ('serviceWorker' in navigator) {
+  const pageLoadedAt = Date.now();
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (sessionStorage.getItem('swReloaded')) return;
+    // A new service worker taking over right after this page was freshly
+    // loaded isn't stale content to fix — this exact navigation already
+    // fetched the latest index.html/JS over the network (fetch is
+    // network-first), so reloading again here is a redundant extra refresh
+    // a couple seconds after opening. Only reload when a new SW takes over
+    // an already-running session well after load, where it actually matters
+    // (a long-lived open tab that never navigated again on its own).
+    if (Date.now() - pageLoadedAt < 15000) return;
     sessionStorage.setItem('swReloaded', '1');
     location.reload();
   });
