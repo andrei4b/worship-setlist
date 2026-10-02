@@ -1,6 +1,17 @@
 /* service-worker.js — offline support (network-first for our own code) */
 
-const CACHE_NAME = 'worship-planner-v5';
+// The network attempt below is raced against a timeout (NETWORK_TIMEOUT_MS)
+// rather than awaited outright. A phone waking from a long sleep often has a
+// connection that stalls instead of failing outright — Wi-Fi or cellular
+// still reconnecting — and a stalled fetch() may not reject for a long time.
+// Without the race, every shell file (the HTML/JS needed just to start
+// rendering) would hang right along with it, leaving the page blank until
+// the connection either recovers or times out on its own — the "white
+// screen after being idle a while" symptom this fixes. Closing and
+// reopening the app only "fixed" it before by giving the network a fresh
+// attempt once connectivity was actually back.
+const CACHE_NAME = 'worship-planner-v6';
+const NETWORK_TIMEOUT_MS = 4000;
 const ASSETS = [
   './',
   './index.html',
@@ -67,15 +78,26 @@ self.addEventListener('fetch', (event) => {
   // worker script itself changed — this way, updates land on the very next
   // online visit instead of being stuck behind a version bump.
   if (request.mode === 'navigate' || isSameOrigin) {
+    // cache: 'no-store' bypasses the browser's own HTTP cache, not just
+    // ours — without it, "network-first" could still serve a stale
+    // response the browser cached on a prior visit.
+    //
+    // Caching the response is chained off the network fetch itself, not off
+    // whichever side of the race below wins — so a slow response that loses
+    // the race still updates the cache once it finally arrives, instead of
+    // being thrown away.
+    const networkFetch = fetch(request, { cache: 'no-store' }).then(res => {
+      const copy = res.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      return res;
+    }).catch(() => null);
+
+    const timeout = new Promise(resolve => setTimeout(() => resolve(null), NETWORK_TIMEOUT_MS));
+
     event.respondWith(
-      // cache: 'no-store' bypasses the browser's own HTTP cache, not just
-      // ours — without it, "network-first" could still serve a stale
-      // response the browser cached on a prior visit.
-      fetch(request, { cache: 'no-store' }).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-        return res;
-      }).catch(() => caches.match(request).then(r => r || (request.mode === 'navigate' ? caches.match('./index.html') : undefined)))
+      Promise.race([networkFetch, timeout]).then(res =>
+        res || caches.match(request).then(r => r || (request.mode === 'navigate' ? caches.match('./index.html') : undefined))
+      )
     );
     return;
   }
