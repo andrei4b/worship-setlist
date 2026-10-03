@@ -1177,7 +1177,17 @@ function createSetlistsTab(container, ctx) {
     );
   }
 
-  return { load, refresh };
+  // Re-opens a setlist's detail view by id (used to resume where the user
+  // was after a reload); replaces the current history entry instead of
+  // pushing, since a reload keeps the old entry from the original visit.
+  function openDetailById(id) {
+    const sl = setlists.find(s => s.id === id);
+    if (sl) showDetail(sl, { replace: true });
+  }
+
+  function getOpenDetailId() { return openDetailId; }
+
+  return { load, refresh, openDetailById, getOpenDetailId };
 }
 
 window.createSetlistsTab = createSetlistsTab;

@@ -203,14 +203,63 @@ async function boot() {
   appRoot.appendChild(setlistsContainer);
   appRoot.appendChild(tabbar);
 
+  _currentTab = 'songs';
+  _setlistsApi = setlistsApi;
+
   function switchTab(which) {
     const showSongs = which === 'songs';
+    _currentTab = which;
     songsContainer.style.display = showSongs ? 'flex' : 'none';
     setlistsContainer.style.display = showSongs ? 'none' : 'flex';
     document.getElementById('tab-songs-btn').classList.toggle('is-active', showSongs);
     document.getElementById('tab-setlists-btn').classList.toggle('is-active', !showSongs);
     if (!showSongs) setlistsApi.refresh();
   }
+
+  restoreResumeState(switchTab, setlistsApi);
+}
+
+// ---- Resume after a stale-background reload ----
+// The visibilitychange recovery below reloads the page, which would
+// otherwise drop the user back on the Songs tab. Right before reloading we
+// stash where they were (active tab, open setlist, scroll position) in
+// sessionStorage — per-tab and cleared when the app is closed — and boot()
+// puts them back once the data has loaded. Search text and filters aren't
+// preserved; they're cheap to redo and not worth the extra state.
+const RESUME_KEY = 'resumeState';
+let _currentTab = 'songs';
+let _setlistsApi = null;
+
+function saveResumeState() {
+  try {
+    const appRoot = document.getElementById('app');
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({
+      tab: _currentTab,
+      setlistId: _setlistsApi ? _setlistsApi.getOpenDetailId() : null,
+      scrollTop: appRoot ? appRoot.scrollTop : 0,
+      savedAt: Date.now()
+    }));
+  } catch (_) {}
+}
+
+function restoreResumeState(switchTab, setlistsApi) {
+  let state = null;
+  try {
+    state = JSON.parse(sessionStorage.getItem(RESUME_KEY) || 'null');
+    sessionStorage.removeItem(RESUME_KEY);
+  } catch (_) {}
+  // Ignore anything old — a leftover from an earlier session shouldn't
+  // hijack a normal cold start.
+  if (!state || Date.now() - state.savedAt > 2 * 60 * 1000) return;
+
+  if (state.tab === 'setlists') {
+    switchTab('setlists');
+    if (state.setlistId) setlistsApi.openDetailById(state.setlistId);
+  }
+  // Wait a frame so the restored view has laid out before scrolling.
+  requestAnimationFrame(() => {
+    document.getElementById('app').scrollTop = state.scrollTop || 0;
+  });
 }
 
 // ---- Auth gate ----
@@ -388,6 +437,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     hiddenAt = Date.now();
   } else if (document.visibilityState === 'visible' && hiddenAt && Date.now() - hiddenAt > BACKGROUND_STALE_MS) {
+    saveResumeState();
     window.location.reload();
   }
 });
