@@ -564,7 +564,13 @@ function createSetlistsTab(container, ctx) {
           }, effectiveTempo));
         }
 
-        const titleBits = [el('span', { class: 'setlist-item-title' }, title)];
+        // The title opens the song's link (this entry's override, else the
+        // song's own) in a new tab, when there is one.
+        const rawLink = (item.linkOverride || (song ? song.link : '') || '').trim();
+        const linkHref = rawLink ? (/^[a-z][a-z0-9+.-]*:/i.test(rawLink) ? rawLink : 'https://' + rawLink) : '';
+        const titleBits = [linkHref
+          ? el('a', { class: 'setlist-item-title is-link', href: linkHref, target: '_blank', rel: 'noopener noreferrer' }, title)
+          : el('span', { class: 'setlist-item-title' }, title)];
         if (metaBits.length) titleBits.push(el('div', { class: 'setlist-item-meta-group' }, ...metaBits));
         titleLine = el('div', { class: 'setlist-item-titleline' }, ...titleBits);
 
@@ -606,6 +612,10 @@ function createSetlistsTab(container, ctx) {
       const MAX_REVEAL = 120;
       let dragging = false, decided = false, isHorizontal = false;
       let startX = 0, startY = 0, dx = 0;
+      let swiped = false;
+      listenEl.addEventListener('click', (e) => {
+        if (swiped) { e.preventDefault(); e.stopPropagation(); }
+      }, true);
 
       function setTransform(x) { slideEl.style.transform = x ? `translateX(${x}px)` : ''; }
       function updateAction(x) {
@@ -647,6 +657,12 @@ function createSetlistsTab(container, ctx) {
       function onEnd() {
         if (!dragging) return;
         dragging = false;
+        // A horizontal swipe that starts or ends on the title link would
+        // otherwise also count as a click on it and open the link.
+        if (isHorizontal) {
+          swiped = true;
+          setTimeout(() => { swiped = false; }, 400);
+        }
         const commitDelete = dx >= THRESHOLD;
         const commitEdit = dx <= -THRESHOLD;
         settle();

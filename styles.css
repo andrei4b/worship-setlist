@@ -838,6 +838,11 @@ a { color: var(--accent); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.setlist-item-title.is-link {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
 .setlist-item-title.is-text {
   font-style: italic;
   color: var(--ink-soft);
