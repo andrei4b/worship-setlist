@@ -437,8 +437,14 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     hiddenAt = Date.now();
   } else if (document.visibilityState === 'visible' && hiddenAt && Date.now() - hiddenAt > BACKGROUND_STALE_MS) {
-    saveResumeState();
-    window.location.reload();
+    hiddenAt = null;
+    saveResumeState(); // must come first — swapping the screen resets scroll
+    // Swap the stale screen for the spinner right away, and give the browser
+    // a frame to actually paint it before reloading — otherwise the old
+    // screen lingers until the fresh page has loaded far enough to show its
+    // own spinner.
+    renderLoadingScreen(document.getElementById('app'));
+    requestAnimationFrame(() => setTimeout(() => window.location.reload(), 30));
   }
 });
 
