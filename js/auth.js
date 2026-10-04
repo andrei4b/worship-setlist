@@ -15,6 +15,17 @@ firebase.initializeApp(window.FIREBASE_CONFIG);
 const auth = firebase.auth();
 const fs = firebase.firestore();
 
+// Keep the sign-in across app restarts. LOCAL is already the SDK's default
+// in a browser, but it's set explicitly so that can't silently change, and
+// the browser is asked to treat this site's storage as persistent: by
+// default it may evict IndexedDB (where Firebase keeps the sign-in) under
+// storage pressure or for sites that haven't been visited in a while,
+// which looks exactly like "I have to sign in again after a long time".
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {});
+}
+
 let _fbUser = null;   // firebase.User | null
 let _profile = null;  // { role, groupId, email, displayName, createdAt } | null
 
@@ -29,14 +40,37 @@ let _readyResolve;
 const _ready = new Promise((res) => { _readyResolve = res; });
 let _settledOnce = false;
 
+// The profile is mirrored to localStorage so a failed fetch (phone just woke
+// up and its connection is still stalled/offline) doesn't get mistaken for
+// "this account has no profile" — which would drop a signed-in member onto
+// the join-with-invite-code screen. Only a successful read that finds no
+// doc counts as "no profile".
+const PROFILE_CACHE_PREFIX = 'profileCache:';
+function _readCachedProfile(uid) {
+  try { return JSON.parse(localStorage.getItem(PROFILE_CACHE_PREFIX + uid) || 'null'); } catch (_) { return null; }
+}
+function _writeCachedProfile(uid, profile) {
+  try {
+    if (profile) localStorage.setItem(PROFILE_CACHE_PREFIX + uid, JSON.stringify(profile));
+    else localStorage.removeItem(PROFILE_CACHE_PREFIX + uid);
+  } catch (_) {}
+}
+
 async function _loadProfile() {
   if (!_fbUser) { _profile = null; return; }
-  try {
-    const snap = await fs.collection('users').doc(_fbUser.uid).get();
-    _profile = snap.exists ? snap.data() : null;
-  } catch (_) {
-    _profile = null;
+  const uid = _fbUser.uid;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const snap = await fs.collection('users').doc(uid).get();
+      _profile = snap.exists ? snap.data() : null;
+      _writeCachedProfile(uid, _profile);
+      return;
+    } catch (_) {
+      if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
+    }
   }
+  // Both attempts failed — fall back to the last profile we saw.
+  _profile = _readCachedProfile(uid);
 }
 
 auth.onAuthStateChanged(async (user) => {
@@ -69,6 +103,7 @@ async function signInWithGoogle() {
 }
 
 async function signOut() {
+  if (_fbUser) _writeCachedProfile(_fbUser.uid, null);
   await auth.signOut();
 }
 
