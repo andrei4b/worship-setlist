@@ -56,12 +56,25 @@ function _writeCachedProfile(uid, profile) {
   } catch (_) {}
 }
 
+// A stalled connection doesn't fail a get() fast — it can take ~10s per
+// attempt, all of it spent on the boot spinner. When there's a cached
+// profile to fall back to anyway, each attempt is cut short instead.
+const PROFILE_FETCH_TIMEOUT_MS = 4000;
+function _withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+  ]);
+}
+
 async function _loadProfile() {
   if (!_fbUser) { _profile = null; return; }
   const uid = _fbUser.uid;
+  const hasCache = !!_readCachedProfile(uid);
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const snap = await fs.collection('users').doc(uid).get();
+      const get = fs.collection('users').doc(uid).get();
+      const snap = await (hasCache ? _withTimeout(get, PROFILE_FETCH_TIMEOUT_MS) : get);
       _profile = snap.exists ? snap.data() : null;
       _writeCachedProfile(uid, _profile);
       return;

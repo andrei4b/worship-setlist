@@ -10,7 +10,7 @@
 // screen after being idle a while" symptom this fixes. Closing and
 // reopening the app only "fixed" it before by giving the network a fresh
 // attempt once connectivity was actually back.
-const CACHE_NAME = 'worship-planner-v6';
+const CACHE_NAME = 'worship-planner-v7';
 const NETWORK_TIMEOUT_MS = 4000;
 const ASSETS = [
   './',
@@ -47,9 +47,24 @@ function isBypassHost(hostname) {
   return BYPASS_HOSTS.some(h => hostname === h || hostname.endsWith('.' + h));
 }
 
+// The Firebase SDK is cross-origin and needed to render anything at all, so
+// it's precached up front too, rather than only once it's first fetched.
+// cache.addAll() rejects opaque (no-cors) responses, so these are fetched
+// and stored by hand. Keep in sync with the <script> tags in index.html.
+const CROSS_ORIGIN_ASSETS = [
+  'https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/11.1.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore-compat.js'
+];
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).catch(() => {})
+    caches.open(CACHE_NAME).then(cache => Promise.all([
+      cache.addAll(ASSETS),
+      ...CROSS_ORIGIN_ASSETS.map(url =>
+        fetch(new Request(url, { mode: 'no-cors' })).then(res => cache.put(url, res))
+      )
+    ])).catch(() => {})
   );
   self.skipWaiting();
 });
@@ -102,18 +117,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for cross-origin assets (Google Fonts, etc.) — immutable
-  // once fetched, so there's no freshness to chase and caching saves a round trip.
+  // Cache-first for cross-origin assets (Google Fonts, the Firebase SDK) —
+  // immutable once fetched, so there's no freshness to chase and caching
+  // saves a round trip.
+  //
+  // These are requested as plain <link>/<script> tags (no crossorigin
+  // attribute), so their responses are opaque (status 0) — they must still
+  // be cached, or they'd never be: the Firebase SDK scripts block parsing
+  // and the fonts stylesheet blocks first paint, so a cold start on a
+  // stalled connection would hang on them with a blank white page, the
+  // same symptom the same-origin timeout above fixes for our own files.
+  // A cache miss is raced against the same timeout for the same reason.
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
-      return fetch(request).then(res => {
-        if (res && res.status === 200 && res.type !== 'opaque') {
+      const networkFetch = fetch(request).then(res => {
+        if (res && (res.ok || res.type === 'opaque')) {
           const copy = res.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }
         return res;
-      }).catch(() => cached);
+      }).catch(() => null);
+      const timeout = new Promise(resolve => setTimeout(() => resolve(null), NETWORK_TIMEOUT_MS));
+      return Promise.race([networkFetch, timeout]).then(res => res || Response.error());
     })
   );
 });
