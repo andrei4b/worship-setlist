@@ -29,7 +29,7 @@ const PLUS_ICON = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 4h2
 const BACK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive, confirmAction } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, longDateFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive, confirmAction } = UI;
 
   let setlists = [];
   let query = '';
@@ -196,14 +196,15 @@ function createSetlistsTab(container, ctx) {
     return weekdayNames[bucket];
   }
 
-  // "<weekday>" or "<weekday> · <band>" — used for both the list card and
-  // the detail page header. Sunday setlists with a service picked show
-  // "Duminică AM"/"Duminică PM" instead of the plain weekday.
+  // "<weekday>, <date>" or "<weekday>, <date> · <band>" — used for both the
+  // list card and the detail page header. Sunday setlists with a service
+  // picked show "Duminică AM"/"Duminică PM" instead of the plain weekday.
   function setlistSubtitle(sl) {
     const date = getSetlistDate(sl);
     let weekday = weekdayNameFromJSDate(date);
     if (date.getDay() === 0 && sl.sundayService) weekday += ' ' + sl.sundayService;
-    return sl.band ? `${weekday} · ${sl.band}` : weekday;
+    const when = `${weekday}, ${longDateFromJSDate(date)}`;
+    return sl.band ? `${when} · ${sl.band}` : when;
   }
 
   // The "-- " marker is a display/share-time affordance, not stored data —
