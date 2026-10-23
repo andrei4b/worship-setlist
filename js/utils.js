@@ -204,10 +204,11 @@ function setlistNameFromDate(dateInputValue) {
   return `${date.getDate()} ${RO_MONTHS[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
 }
 
-// Full display date, e.g. "20 iulie 2026" — unlike setlistNameFromDate's
-// two-digit year, since it's shown next to a name that may already use that.
-function longDateFromJSDate(date) {
-  return `${date.getDate()} ${RO_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+// Numeric display date, e.g. "20.07.2026".
+function dmyDateFromJSDate(date) {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${d}.${m}.${date.getFullYear()}`;
 }
 
 function weekdayNameFromJSDate(date) {
@@ -249,7 +250,7 @@ async function copyToClipboard(text) {
   }
 }
 
-window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, longDateFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput, describeDbError, confirmDestructive, confirmAction };
+window.UI = { el, clear, escapeHtml, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromDate, weekdayNameFromJSDate, dmyDateFromJSDate, weekdayNames: WEEKDAY_NAMES, parseDateInput, describeDbError, confirmDestructive, confirmAction };
 window.JSONUtil = { songsToJSON, jsonToSongs };
 window.FileUtil = { downloadFile, copyToClipboard, dateStamp };
 

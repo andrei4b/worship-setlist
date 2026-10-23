@@ -29,7 +29,7 @@ const PLUS_ICON = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 4h2
 const BACK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
-  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, longDateFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive, confirmAction } = UI;
+  const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, dmyDateFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive, confirmAction } = UI;
 
   let setlists = [];
   let query = '';
@@ -203,7 +203,7 @@ function createSetlistsTab(container, ctx) {
     const date = getSetlistDate(sl);
     let weekday = weekdayNameFromJSDate(date);
     if (date.getDay() === 0 && sl.sundayService) weekday += ' ' + sl.sundayService;
-    const when = `${weekday}, ${longDateFromJSDate(date)}`;
+    const when = `${weekday}, ${dmyDateFromJSDate(date)}`;
     return sl.band ? `${when} · ${sl.band}` : when;
   }
 
