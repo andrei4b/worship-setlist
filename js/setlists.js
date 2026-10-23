@@ -26,7 +26,10 @@ const LIST_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 // for the FAB — a text "+" glyph sits off-center by a pixel or two due to
 // font metrics/baseline, which is visible at the FAB's size.
 const PLUS_ICON = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4z"/></svg>`;
-const BACK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
+// Marks a text entry (announcements, readings, …) on the detail page, in
+// place of the "-- " prefix that plain-text shares still use.
+const TEXT_ENTRY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+const BACK_ICON =`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
 
 function createSetlistsTab(container, ctx) {
   const { el, clear, toast, debounce, normalizeForSearch, setlistNameFromDate, weekdayNameFromJSDate, dmyDateFromJSDate, weekdayNames, parseDateInput, describeDbError, confirmDestructive, confirmAction } = UI;
@@ -580,7 +583,8 @@ function createSetlistsTab(container, ctx) {
         }
       } else {
         titleLine = el('div', { class: 'setlist-item-titleline' },
-          el('span', { class: 'setlist-item-title is-text' }, item.text ? withTextEntryPrefix(item.text) : '(empty)')
+          el('span', { class: 'setlist-item-text-icon', html: TEXT_ENTRY_ICON }),
+          el('span', { class: 'setlist-item-title is-text' }, withoutTextEntryPrefix(item.text) || '(empty)')
         );
       }
 
@@ -591,7 +595,7 @@ function createSetlistsTab(container, ctx) {
       const swipeAction = el('div', { class: 'setlist-item-swipe-action' });
       // Without the drag handle, the row loses its usual right-side spacing —
       // add it back so read-only rows don't sit flush against the edge.
-      const rowContent = el('div', { class: 'setlist-item-row-content' + (editable ? '' : ' is-readonly') },
+      const rowContent = el('div', { class: 'setlist-item-row-content' + (item.type === 'text' ? ' is-text' : '') + (editable ? '' : ' is-readonly') },
         body,
         editable ? el('div', { class: 'drag-handle', title: 'Drag to reorder' },
           el('span', { html: LIST_ICON })

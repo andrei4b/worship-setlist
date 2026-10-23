@@ -11,6 +11,8 @@
   --accent-press: #8C3623;
   --sage: #7C8B6F;
   --sage-soft: #E4E9DE;
+  --sage-tint: #EEF1E9;
+  --sage-ink: #4E5A43;
   --danger: #B23A3A;
   --danger-soft: #F4DEDE;
 
@@ -812,6 +814,14 @@ a { color: var(--accent); }
 /* No drag handle to provide right-side spacing on a read-only setlist —
    add it back directly so the row doesn't sit flush against the edge. */
 .setlist-item-row-content.is-readonly { padding-right: 20px; }
+/* Text entries (announcements, readings, …) sit on a sage band with a
+   thin sage edge, so they read as "not a song" at a glance. The edge is an
+   inset shadow rather than a border so it slides along with a swipe and
+   doesn't shift the row's content. */
+.setlist-item-row-content.is-text {
+  background: var(--sage-tint);
+  box-shadow: inset 3px 0 0 var(--sage);
+}
 .setlist-item-row-content.is-swipe-animating { transition: transform 0.2s ease; }
 .setlist-item-body {
   flex: 1;
@@ -844,14 +854,15 @@ a { color: var(--accent); }
   -webkit-tap-highlight-color: transparent;
 }
 .setlist-item-title.is-text {
-  font-style: italic;
-  color: var(--ink-soft);
+  color: var(--sage-ink);
   font-weight: 500;
-  /* Italic glyphs lean past their own layout box on the right, so with
-     overflow:hidden the last letter's stroke gets visually clipped
-     without a little breathing room here. */
-  padding-right: 4px;
 }
+.setlist-item-text-icon {
+  flex-shrink: 0;
+  color: var(--sage);
+  display: flex;
+}
+.setlist-item-text-icon svg { width: 16px; height: 16px; display: block; }
 .setlist-item-meta-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .setlist-item-inline-meta {
   font-size: 12.5px;
