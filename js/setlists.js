@@ -819,14 +819,7 @@ function createSetlistsTab(container, ctx) {
 
     function openAddTextEntry() {
       const textInput = el('textarea', { placeholder: 'e.g. Welcome & Announcements, Offering, Scripture reading…' });
-      const suggestionsWrap = el('div', { class: 'suggestion-chips' });
-      // Hidden until (if) recent suggestions actually load — a group's
-      // very first text entry has nothing to suggest yet.
-      const suggestionsSection = el('div', { style: 'display:none; margin-top:10px' },
-        el('div', { class: 'field-hint', style: 'margin-bottom:6px' }, 'Quick add:'),
-        suggestionsWrap
-      );
-      const body = el('div', null, formField('Text', textInput), suggestionsSection);
+      const body = el('div', null, formField('Text', textInput));
       const footer = el('div', { class: 'sheet-footer' },
         el('button', { class: 'btn btn--primary btn--block', onclick: async () => {
           const val = textInput.value.trim();
@@ -835,25 +828,9 @@ function createSetlistsTab(container, ctx) {
           closeSheet();
           await autoSave(draft);
           renderItems();
-          // Best-effort — the shared suggestion list is a convenience, not
-          // core functionality, so a permission/network hiccup here shouldn't
-          // surface an error for what already succeeded.
-          DB.addRecentText(val).catch(() => {});
         }}, 'Add')
       );
       openSheet('Add text entry', body, footer);
-
-      // Loaded after the sheet is already open — a group-wide read that
-      // shouldn't delay showing the (otherwise instant) text entry form.
-      DB.getRecentTexts().then(recent => {
-        if (!recent.length) return;
-        recent.forEach(text => suggestionsWrap.appendChild(el('button', {
-          class: 'chip-btn',
-          type: 'button',
-          onclick: () => { textInput.value = text; }
-        }, text)));
-        suggestionsSection.style.display = '';
-      }).catch(() => {});
     }
   }
 
