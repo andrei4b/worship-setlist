@@ -14,18 +14,70 @@ const SIGNOUT_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 // and expose how much space the keyboard is eating (--kb-inset) so bottom-
 // anchored fixed elements like the FAB can float above it instead of
 // disappearing underneath.
+//
+// iOS home-screen apps have a long-standing WebKit bug: once the keyboard
+// has opened (or sometimes right at launch), innerHeight, visualViewport
+// and the layout viewport stay ~59px short — the status bar's height — so
+// the whole shell ends that far above the screen's bottom edge, with a bare
+// strip under the tab bar. A full-screen standalone app always fills the
+// screen, so whenever no field is focused (no keyboard) the screen's own
+// size is the true height. --vvh/--vv-top get that corrected height, and
+// --bottom-shift (≤0) moves bottom-anchored fixed elements from the short
+// layout viewport's bottom edge down to the real one.
+const IS_IOS_STANDALONE = window.navigator.standalone === true;
+
+function isEditingText() {
+  const a = document.activeElement;
+  if (!a) return false;
+  if (a.isContentEditable) return true;
+  return a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !/^(button|checkbox|radio|submit|reset|file|range|color)$/.test(a.type));
+}
+
+// The true full-screen height, or null when it can't be known (not an iOS
+// home-screen app, a field has the keyboard up, or the window doesn't span
+// the screen — e.g. iPad Split View / Stage Manager).
+function fullScreenHeight() {
+  if (!IS_IOS_STANDALONE || isEditingText()) return null;
+  // screen.width/height are always the portrait dimensions on iOS.
+  const short = Math.min(screen.width, screen.height);
+  const long = Math.max(screen.width, screen.height);
+  const w = window.innerWidth;
+  if (Math.abs(w - short) <= 1) return long;
+  if (Math.abs(w - long) <= 1) return short;
+  return null;
+}
+
 function syncViewportInsets() {
   const vv = window.visualViewport;
   const root = document.documentElement.style;
-  root.setProperty('--vvh', (vv ? vv.height : window.innerHeight) + 'px');
-  root.setProperty('--vv-top', (vv ? vv.offsetTop : 0) + 'px');
+  let height = vv ? vv.height : window.innerHeight;
+  let top = vv ? vv.offsetTop : 0;
+  const full = fullScreenHeight();
+  if (full && full > top + height + 1) { height = full; top = 0; }
+  root.setProperty('--vvh', height + 'px');
+  root.setProperty('--vv-top', top + 'px');
+  root.setProperty('--bottom-shift', Math.min(0, window.innerHeight - (top + height)) + 'px');
   const kbInset = vv ? Math.max(0, window.innerHeight - vv.offsetTop - vv.height) : 0;
-  root.setProperty('--kb-inset', kbInset + 'px');
+  root.setProperty('--kb-inset', (full ? 0 : kbInset) + 'px');
+}
+
+// iOS often finishes closing the keyboard (and settling the viewport)
+// without a visualViewport event, so re-check once things have settled.
+function syncViewportInsetsSoon() {
+  syncViewportInsets();
+  setTimeout(syncViewportInsets, 150);
+  setTimeout(syncViewportInsets, 500);
 }
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', syncViewportInsets);
   window.visualViewport.addEventListener('scroll', syncViewportInsets);
 }
+window.addEventListener('resize', syncViewportInsets);
+window.addEventListener('orientationchange', syncViewportInsetsSoon);
+window.addEventListener('pageshow', syncViewportInsetsSoon);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncViewportInsetsSoon(); });
+document.addEventListener('focusin', syncViewportInsetsSoon);
+document.addEventListener('focusout', syncViewportInsetsSoon);
 syncViewportInsets();
 
 // ---- Shared sheet/modal manager (supports stacking) ----

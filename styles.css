@@ -35,6 +35,16 @@
 
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Content column width on wide screens, and the empty space beside it
+     (0 on phones in portrait). Floating controls (FAB, A–Z index) and the
+     full-width bars hug the column instead of the window's far edges. */
+  --column: 640px;
+  --side-gap: 0px;
+  --gutter-left: max(var(--side-gap), var(--safe-left));
+  --gutter-right: max(var(--side-gap), var(--safe-right));
 }
 
 * { box-sizing: border-box; }
@@ -44,6 +54,8 @@ html, body {
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   overscroll-behavior-y: none;
   height: 100%;
   overflow: hidden;
@@ -208,9 +220,9 @@ a { color: var(--accent); }
 /* ============ A–Z index scrubber ============ */
 .index-scrubber-wrap {
   position: fixed;
-  right: 0;
+  right: var(--gutter-right);
   top: calc(150px + var(--safe-top));
-  bottom: calc(152px + var(--safe-bottom));
+  bottom: calc(152px + var(--safe-bottom) + var(--bottom-shift, 0px));
   display: flex;
   align-items: center;
   z-index: 7;
@@ -232,7 +244,7 @@ a { color: var(--accent); }
 .index-letter.is-dim { color: var(--ink-faint); opacity: 0.5; }
 .index-popover {
   position: fixed;
-  right: 44px;
+  right: calc(44px + var(--gutter-right));
   transform: translateY(-50%);
   min-width: 56px;
   height: 56px;
@@ -256,11 +268,11 @@ a { color: var(--accent); }
 /* ============ Tab bar ============ */
 .tabbar {
   position: fixed;
-  left: 0; right: 0; bottom: 0;
+  left: 0; right: 0; bottom: var(--bottom-shift, 0px);
   display: flex;
   background: var(--paper-raised);
   border-top: 1px solid var(--line);
-  padding-bottom: var(--safe-bottom);
+  padding: 0 var(--gutter-right) var(--safe-bottom) var(--gutter-left);
   z-index: 10;
 }
 .tabbar-btn {
@@ -413,8 +425,8 @@ a { color: var(--accent); }
 /* ============ FAB ============ */
 .fab {
   position: fixed;
-  right: 20px;
-  bottom: calc(var(--safe-bottom) + max(86px, var(--kb-inset, 0px) + 16px));
+  right: calc(20px + var(--gutter-right));
+  bottom: calc(var(--safe-bottom) + var(--bottom-shift, 0px) + max(86px, var(--kb-inset, 0px) + 16px));
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--accent);
@@ -433,8 +445,8 @@ a { color: var(--accent); }
 
 .fab-row {
   position: fixed;
-  right: 20px;
-  bottom: calc(var(--safe-bottom) + max(86px, var(--kb-inset, 0px) + 16px));
+  right: calc(20px + var(--gutter-right));
+  bottom: calc(var(--safe-bottom) + var(--bottom-shift, 0px) + max(86px, var(--kb-inset, 0px) + 16px));
   display: flex;
   gap: 10px;
   z-index: 8;
@@ -697,10 +709,10 @@ a { color: var(--accent); }
 .detail-add-bar {
   position: fixed;
   left: 0; right: 0;
-  bottom: calc(60px + var(--safe-bottom));
+  bottom: calc(60px + var(--safe-bottom) + var(--bottom-shift, 0px));
   display: flex;
   gap: 10px;
-  padding: 10px 16px;
+  padding: 10px calc(16px + var(--gutter-right)) 10px calc(16px + var(--gutter-left));
   background: var(--paper);
   border-top: 1px solid var(--line);
   z-index: 6;
@@ -909,7 +921,7 @@ a { color: var(--accent); }
 /* ============ Toast ============ */
 .toast-root {
   position: fixed;
-  bottom: calc(96px + var(--safe-bottom));
+  bottom: calc(96px + var(--safe-bottom) + var(--bottom-shift, 0px));
   left: 0; right: 0;
   display: flex;
   flex-direction: column;
@@ -969,10 +981,36 @@ a { color: var(--accent); }
 }
 
 @media (min-width: 720px) {
-  .app-main { max-width: 640px; margin: 0 auto; width: 100%; }
-  .app-header { max-width: 640px; margin: 0 auto; width: 100%; }
-  .sheet { max-width: 640px; margin: 0 auto; border-radius: 20px 20px 0 0; }
+  :root { --side-gap: calc((100vw - var(--column)) / 2); }
+  .app-main, .app-header,
+  .detail-topbar, .detail-header, .detail-items { max-width: var(--column); margin: 0 auto; width: 100%; }
+  .sheet { max-width: var(--column); margin: 0 auto; border-radius: 20px 20px 0 0; }
   .sheet-backdrop { justify-content: center; }
+}
+
+/* Phones in landscape (and other short windows): a pinned header would eat
+   most of the screen, and the A–Z index has no room for its letters. Let
+   the header scroll away with the list and drop the index. */
+@media (max-height: 500px) {
+  .app-header { position: static; }
+  .index-scrubber-wrap { display: none; }
+}
+
+/* Narrow screens with side insets (phones rotated, notch on one side). */
+@media (max-width: 719px) {
+  .app-header, .detail-header {
+    padding-left: calc(20px + var(--safe-left));
+    padding-right: calc(20px + var(--safe-right));
+  }
+  .detail-topbar {
+    padding-left: calc(10px + var(--safe-left));
+    padding-right: calc(10px + var(--safe-right));
+  }
+  .sheet { padding-left: var(--safe-left); padding-right: var(--safe-right); }
+  .app-main {
+    padding-left: calc(20px + var(--safe-left));
+    padding-right: calc(30px + var(--safe-right));
+  }
 }
 
 /* ============ Auth screens (sign-in / join group) ============ */
