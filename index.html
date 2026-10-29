@@ -5,9 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>Setlist — Worship Planner</title>
 <meta name="description" content="Plan worship songs and setlists, offline, on your phone." />
-<meta name="theme-color" content="#A8442E" />
+<meta name="theme-color" content="#FAF6EF" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<!-- "default" (an opaque status bar), not "black-translucent": on iOS 26 a
+     Home Screen app with a translucent status bar gets a web view that's
+     short by the status bar's height (WebKit bug 301108), leaving a strip at
+     the bottom that nothing on the page can paint. Installed apps keep the
+     style they were added with, so they need re-adding to pick this up. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Setlist" />
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="apple-touch-icon" href="./icons/icon-192.png" />
