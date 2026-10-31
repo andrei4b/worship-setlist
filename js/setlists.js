@@ -128,6 +128,46 @@ function createSetlistsTab(container, ctx) {
     // from closeSheet() corrupts the stack (one push effectively gets lost).
     if (opts && opts.replace) history.replaceState(state, '');
     else history.pushState(state, '');
+    reloadOpenSetlist(setlist);
+  }
+
+  // The detail view first renders from the in-memory copy (loaded once at
+  // startup) so it opens instantly, then re-fetches this one setlist and
+  // re-renders if someone else in the group changed it since. Skipped if
+  // the view moved on, a local save already happened, or the user is mid-
+  // interaction (a sheet open or a drag running) — re-rendering then would
+  // leave that sheet's closure holding a stale draft that could overwrite
+  // the fresh data on its next save.
+  async function reloadOpenSetlist(shown) {
+    let fresh;
+    try {
+      fresh = await DB.getSetlist(shown.id);
+    } catch (err) {
+      return; // offline or similar — keep showing the cached copy
+    }
+    if (openDetailId !== shown.id) return;
+    const current = setlists.find(s => s.id === shown.id);
+    if (current && current !== shown) return;
+    if (document.querySelector('.sheet-backdrop, .drag-item--dragging')) return;
+
+    if (!fresh) {
+      setlists = setlists.filter(s => s.id !== shown.id);
+      toast('This setlist was deleted', { variant: 'danger' });
+      history.back();
+      return;
+    }
+    if (JSON.stringify(fresh) === JSON.stringify(shown)) return;
+
+    const idx = setlists.findIndex(s => s.id === fresh.id);
+    if (idx >= 0) setlists[idx] = fresh; else setlists.push(fresh);
+    // A song another member just added to this setlist may not be in the
+    // Songs tab's cache yet either.
+    const missingSong = (fresh.items || []).some(i => i.songId && !getSongById(i.songId));
+    if (missingSong && ctx.refreshSongs) {
+      try { await ctx.refreshSongs(); } catch (err) { /* keep going */ }
+      if (document.querySelector('.sheet-backdrop, .drag-item--dragging')) return;
+    }
+    refreshOpenDetail();
   }
 
   function showList() {
